@@ -64,6 +64,37 @@ services:
   assert.equal(path.basename(findings[0].filePath), 'database.env');
 });
 
+test('literal secret build args are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.2.3
+    build:
+      context: .
+      args:
+        API_TOKEN: build-token
+        PUBLIC_FLAG: enabled
+  worker:
+    image: worker:1.2.3
+    build:
+      context: .
+      args:
+        - CLIENT_SECRET=\${CLIENT_SECRET}
+        - PRIVATE_KEY=plain-text
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG008', 'CRG008']
+  );
+  assert(findings.some((finding) => finding.message.includes('API_TOKEN')));
+  assert(findings.some((finding) => finding.message.includes('PRIVATE_KEY')));
+});
+
 test('host access risks are reported', () => {
   const dir = fixture({
     'compose.yaml': `

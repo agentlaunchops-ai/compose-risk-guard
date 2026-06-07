@@ -9,7 +9,8 @@ export const rules = {
   CRG004: 'Service bind-mounts the Docker socket',
   CRG005: 'Service shares a host namespace',
   CRG006: 'Service bind-mounts a sensitive host path',
-  CRG007: 'Service image uses latest or has no explicit tag/digest'
+  CRG007: 'Service image uses latest or has no explicit tag/digest',
+  CRG008: 'Secret-like build argument has a literal value'
 };
 
 const composeNames = new Set([
@@ -80,6 +81,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanEnvFiles(service, serviceName, filePath, rootDir));
     findings.push(...scanHostAccess(service, serviceName, filePath, text));
     findings.push(...scanImage(service, serviceName, filePath, text));
+    findings.push(...scanBuildArgs(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -205,6 +207,29 @@ function scanImage(service, serviceName, filePath, text) {
       lineFor(text, `image: ${image}`)
     )
   ];
+}
+
+function scanBuildArgs(service, serviceName, filePath, text) {
+  const args = service.build && typeof service.build === 'object' ? service.build.args : null;
+  if (!args) return [];
+  const entries = Array.isArray(args)
+    ? args.map((item) => {
+        const [key, ...rest] = String(item).split('=');
+        return [key, rest.join('=')];
+      })
+    : Object.entries(args);
+
+  return entries.flatMap(([key, value]) => {
+    if (!isSecretLiteral(key, value)) return [];
+    return [
+      finding(
+        'CRG008',
+        `${serviceName} sets secret-like build argument ${key} with a literal value`,
+        filePath,
+        lineFor(text, key)
+      )
+    ];
+  });
 }
 
 function isSecretLiteral(key, value) {

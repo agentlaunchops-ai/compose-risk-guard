@@ -7,6 +7,7 @@ It checks for:
 
 - secret-looking `environment` entries with literal values
 - secret-looking keys inside referenced env files
+- secret-looking `build.args` entries with literal values
 - `privileged: true`
 - Docker socket bind mounts
 - host namespace sharing through `network_mode`, `pid`, or `ipc`
@@ -69,6 +70,7 @@ jobs:
 | `CRG005` | Service shares a host namespace |
 | `CRG006` | Service bind-mounts a sensitive host path |
 | `CRG007` | Service image uses `latest` or has no explicit tag/digest |
+| `CRG008` | Secret-like build argument has a literal value |
 
 ## License
 
