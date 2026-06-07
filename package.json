@@ -1,0 +1,37 @@
+{
+  "name": "@agentlaunchopsai/compose-risk-guard",
+  "version": "1.0.0",
+  "description": "Scan Docker Compose files for secret env values and host-access risks.",
+  "type": "module",
+  "bin": {
+    "compose-risk-guard": "src/cli.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "scan": "node src/cli.js .",
+    "prepublishOnly": "npm test && node src/cli.js . --no-fail"
+  },
+  "keywords": [
+    "docker",
+    "compose",
+    "docker-compose",
+    "security",
+    "secrets",
+    "ci",
+    "linter"
+  ],
+  "author": "AgentLaunchOps",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
