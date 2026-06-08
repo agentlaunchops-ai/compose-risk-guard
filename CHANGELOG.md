@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG042` to flag SOPS and age secret-management keys bind-mounted into
+  Compose services.
 - Add `CRG041` to flag Terraform and OpenTofu state or credential files
   bind-mounted into Compose services.
 - Add `CRG040` to flag host password stores and PGP secrets bind-mounted into

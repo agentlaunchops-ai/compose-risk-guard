@@ -619,6 +619,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('/home/alice/prod.tfstate.backup')));
 });
 
+test('SOPS and age secret-management key bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  sops:
+    image: mozilla/sops:v3.10.2
+    volumes:
+      - \${HOME}/.config/sops/age/keys.txt:/root/.config/sops/age/keys.txt:ro
+      - /tmp/cache:/cache
+  age:
+    image: alpine:3.22
+    volumes:
+      - /home/alice/.config/age/keys.txt:/run/age-keys.txt:ro
+  legacy:
+    image: alpine:3.22
+    volumes:
+      - type: bind
+        source: /Users/alice/.age-key.txt
+        target: /root/.age-key.txt
+  alt:
+    image: alpine:3.22
+    volumes:
+      - ~/.sops/age/keys.txt:/root/.sops/age/keys.txt:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG042', 'CRG042', 'CRG042', 'CRG042']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/sops/age/keys.txt')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/age/keys.txt')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.age-key.txt')));
+  assert(findings.some((finding) => finding.message.includes('~/.sops/age/keys.txt')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

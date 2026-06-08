@@ -43,7 +43,8 @@ export const rules = {
   CRG038: 'Service bind-mounts dotenv credential files',
   CRG039: 'Service bind-mounts host shell or REPL history files',
   CRG040: 'Service bind-mounts host password store or PGP secrets',
-  CRG041: 'Service bind-mounts Terraform or OpenTofu state or credentials'
+  CRG041: 'Service bind-mounts Terraform or OpenTofu state or credentials',
+  CRG042: 'Service bind-mounts SOPS or age secret-management keys'
 };
 
 const composeNames = new Set([
@@ -478,6 +479,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isSecretManagementKeyPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG042',
+          `${serviceName} bind-mounts SOPS or age secret-management keys from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -567,6 +579,7 @@ function normalizeVolumes(value) {
           !isShellHistoryPath(source) &&
           !isPasswordStorePath(source) &&
           !isTerraformStateOrCredentialPath(source) &&
+          !isSecretManagementKeyPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1143,6 +1156,27 @@ function isTerraformStateOrCredentialPath(source) {
     /^\/home\/[^/]+\/(\.terraform\.d|\.tofu\.d|\.terraformrc|\.tofurc)(\/|$)/.test(normalized) ||
     /^\/root\/(\.terraform\.d|\.tofu\.d|\.terraformrc|\.tofurc)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/(\.terraform\.d|\.tofu\.d|\.terraformrc|\.tofurc)(\/|$)/.test(normalized)
+  );
+}
+
+function isSecretManagementKeyPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.age-key.txt',
+    '.config/age/keys.txt',
+    '.config/sops/age/keys.txt',
+    '.sops/age/keys.txt'
+  ];
+  const keyPattern = /(\.age-key\.txt|\.config\/age\/keys\.txt|\.config\/sops\/age\/keys\.txt|\.sops\/age\/keys\.txt)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
   );
 }
 
