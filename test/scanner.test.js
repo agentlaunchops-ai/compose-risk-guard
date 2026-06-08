@@ -196,6 +196,32 @@ services:
   assert(findings.some((finding) => finding.message.includes('6379')));
 });
 
+test('services explicitly running as root are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    user: root
+  worker:
+    image: worker:1.0.0
+    user: "0:0"
+  app:
+    image: app:1.0.0
+    user: "1000:1000"
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG012', 'CRG012']
+  );
+  assert(findings.some((finding) => finding.message.includes('api')));
+  assert(findings.some((finding) => finding.message.includes('worker')));
+});
+
 test('images without explicit non-latest tag or digest are reported', () => {
   const dir = fixture({
     'compose.yml': `

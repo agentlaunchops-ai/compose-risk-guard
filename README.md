@@ -16,6 +16,7 @@ It checks for:
 - high-risk Linux capabilities added through `cap_add`
 - disabled container security profiles in `security_opt`
 - sensitive service ports published on all interfaces
+- services explicitly configured to run as root
 
 ## Install
 
@@ -77,6 +78,7 @@ jobs:
 | `CRG009` | Service adds a high-risk Linux capability |
 | `CRG010` | Service disables a container security profile |
 | `CRG011` | Service publishes a sensitive port on all interfaces |
+| `CRG012` | Service explicitly runs as root |
 
 ## License
 

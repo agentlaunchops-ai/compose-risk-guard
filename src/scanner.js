@@ -13,7 +13,8 @@ export const rules = {
   CRG008: 'Secret-like build argument has a literal value',
   CRG009: 'Service adds a high-risk Linux capability',
   CRG010: 'Service disables a container security profile',
-  CRG011: 'Service publishes a sensitive port on all interfaces'
+  CRG011: 'Service publishes a sensitive port on all interfaces',
+  CRG012: 'Service explicitly runs as root'
 };
 
 const composeNames = new Set([
@@ -112,6 +113,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanBuildArgs(service, serviceName, filePath, text));
     findings.push(...scanSecurityOptions(service, serviceName, filePath, text));
     findings.push(...scanPublishedPorts(service, serviceName, filePath, text));
+    findings.push(...scanUser(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -307,6 +309,18 @@ function scanPublishedPorts(service, serviceName, filePath, text) {
     );
 }
 
+function scanUser(service, serviceName, filePath, text) {
+  if (!runsAsRoot(service.user)) return [];
+  return [
+    finding(
+      'CRG012',
+      `${serviceName} explicitly runs as root with user: ${service.user}`,
+      filePath,
+      lineFor(text, 'user:')
+    )
+  ];
+}
+
 function normalizePorts(value) {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
@@ -355,6 +369,15 @@ function isDisabledSecurityOption(option) {
 function isPublicHostIp(hostIp) {
   const normalized = String(hostIp || '').trim().toLowerCase();
   return normalized === '' || normalized === '0.0.0.0' || normalized === '::' || normalized === '[::]';
+}
+
+function runsAsRoot(value) {
+  if (typeof value === 'number') return value === 0;
+  if (typeof value !== 'string') return false;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+  const [user] = normalized.split(':');
+  return user === 'root' || user === '0';
 }
 
 function isSecretLiteral(key, value) {
