@@ -771,6 +771,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Microsoft Edge')));
 });
 
+test('host database client credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  postgres:
+    image: postgres:16
+    volumes:
+      - \${HOME}/.pgpass:/root/.pgpass:ro
+      - /tmp/cache:/cache
+  mysql:
+    image: mysql:8.4
+    volumes:
+      - /home/alice/.my.cnf:/root/.my.cnf:ro
+  mongo:
+    image: mongo:8.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.mongorc.js
+        target: /root/.mongorc.js
+  duckdb:
+    image: alpine:3.22
+    volumes:
+      - ~/.duckdbrc:/root/.duckdbrc:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG046', 'CRG046', 'CRG046', 'CRG046']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.pgpass')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.my.cnf')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.mongorc.js')));
+  assert(findings.some((finding) => finding.message.includes('~/.duckdbrc')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

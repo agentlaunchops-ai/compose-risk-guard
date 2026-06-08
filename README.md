@@ -48,6 +48,7 @@ It checks for:
 - cryptocurrency wallet or chain keys bind-mounted into services
 - host AI provider credential directories or files bind-mounted into services
 - host browser profile data bind-mounted into services
+- host database client credential files bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -145,6 +146,7 @@ jobs:
 | `CRG043` | Service bind-mounts cryptocurrency wallet or chain keys |
 | `CRG044` | Service bind-mounts host AI provider credentials |
 | `CRG045` | Service bind-mounts host browser profile data |
+| `CRG046` | Service bind-mounts host database client credentials |
 
 ## License
 

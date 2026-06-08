@@ -47,7 +47,8 @@ export const rules = {
   CRG042: 'Service bind-mounts SOPS or age secret-management keys',
   CRG043: 'Service bind-mounts cryptocurrency wallet or chain keys',
   CRG044: 'Service bind-mounts host AI provider credentials',
-  CRG045: 'Service bind-mounts host browser profile data'
+  CRG045: 'Service bind-mounts host browser profile data',
+  CRG046: 'Service bind-mounts host database client credentials'
 };
 
 const composeNames = new Set([
@@ -526,6 +527,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isDatabaseClientCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG046',
+          `${serviceName} bind-mounts host database client credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -619,6 +631,7 @@ function normalizeVolumes(value) {
           !isCryptoWalletKeyPath(source) &&
           !isAiProviderCredentialPath(source) &&
           !isBrowserProfilePath(source) &&
+          !isDatabaseClientCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1295,6 +1308,30 @@ function isBrowserProfilePath(source) {
     /^\/root\/\.config\/(google-chrome|chromium|BraveSoftware|microsoft-edge)(\/|$)/.test(normalized) ||
     /^\/root\/\.mozilla\/firefox(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Google\/Chrome|Chromium|BraveSoftware|Microsoft Edge|Firefox)(\/|$)/.test(normalized)
+  );
+}
+
+function isDatabaseClientCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.pgpass',
+    '.pg_service.conf',
+    '.my.cnf',
+    '.mylogin.cnf',
+    '.mongorc.js',
+    '.dbshell',
+    '.duckdbrc'
+  ];
+  const keyPattern = /(\.pgpass|\.pg_service\.conf|\.my\.cnf|\.mylogin\.cnf|\.mongorc\.js|\.dbshell|\.duckdbrc)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
   );
 }
 

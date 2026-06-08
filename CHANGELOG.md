@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG046` to flag host database client credentials bind-mounted into
+  Compose services.
 - Add `CRG045` to flag host browser profile data bind-mounted into Compose
   services.
 - Add `CRG044` to flag host AI provider credentials bind-mounted into Compose
