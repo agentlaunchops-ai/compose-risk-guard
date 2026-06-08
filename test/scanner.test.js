@@ -885,6 +885,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.local/share/containers/auth.json')));
 });
 
+test('host tunnel and proxy credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  ngrok:
+    image: ngrok/ngrok:3
+    volumes:
+      - \${HOME}/.config/ngrok/ngrok.yml:/etc/ngrok.yml:ro
+      - /tmp/cache:/cache
+  cloudflared:
+    image: cloudflare/cloudflared:2026.6.0
+    volumes:
+      - /home/alice/.cloudflared:/etc/cloudflared:ro
+  tailscale:
+    image: tailscale/tailscale:v1.84.3
+    volumes:
+      - type: bind
+        source: /var/lib/tailscale
+        target: /var/lib/tailscale
+  zerotier:
+    image: zerotier/zerotier:1.14.2
+    volumes:
+      - ~/.config/zerotier:/var/lib/zerotier-one:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG049', 'CRG049', 'CRG049', 'CRG049']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/ngrok/ngrok.yml')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.cloudflared')));
+  assert(findings.some((finding) => finding.message.includes('/var/lib/tailscale')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/zerotier')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

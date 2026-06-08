@@ -50,7 +50,8 @@ export const rules = {
   CRG045: 'Service bind-mounts host browser profile data',
   CRG046: 'Service bind-mounts host database client credentials',
   CRG047: 'Service bind-mounts host backup or sync credentials',
-  CRG048: 'Service bind-mounts host container registry credentials or certificates'
+  CRG048: 'Service bind-mounts host container registry credentials or certificates',
+  CRG049: 'Service bind-mounts host tunnel or proxy credentials'
 };
 
 const composeNames = new Set([
@@ -562,6 +563,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isTunnelOrProxyCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG049',
+          `${serviceName} bind-mounts host tunnel or proxy credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -658,6 +670,7 @@ function normalizeVolumes(value) {
           !isDatabaseClientCredentialPath(source) &&
           !isBackupOrSyncCredentialPath(source) &&
           !isContainerRegistryCredentialPath(source) &&
+          !isTunnelOrProxyCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1399,6 +1412,36 @@ function isContainerRegistryCredentialPath(source) {
     normalized === '/etc/containers/certs.d' ||
     normalized.startsWith('/etc/docker/certs.d/') ||
     normalized === '/etc/docker/certs.d' ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isTunnelOrProxyCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.ngrok2/ngrok.yml',
+    '.config/ngrok/ngrok.yml',
+    '.cloudflared',
+    '.config/cloudflared',
+    '.tailscale',
+    '.config/tailscale',
+    '.config/zerotier'
+  ];
+  const keyPattern = /(\.ngrok2\/ngrok\.yml|\.config\/ngrok\/ngrok\.yml|\.cloudflared|\.config\/cloudflared|\.tailscale|\.config\/tailscale|\.config\/zerotier)(\/|$)/;
+  return (
+    normalized === '/etc/cloudflared' ||
+    normalized.startsWith('/etc/cloudflared/') ||
+    normalized === '/var/lib/tailscale' ||
+    normalized.startsWith('/var/lib/tailscale/') ||
+    normalized === '/var/lib/zerotier-one' ||
+    normalized.startsWith('/var/lib/zerotier-one/') ||
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
     ) ||

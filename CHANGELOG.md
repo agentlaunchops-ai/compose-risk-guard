@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG049` to flag tunnel and proxy credentials bind-mounted into Compose
+  services.
 - Add `CRG048` to flag host container registry credentials and certificate
   stores bind-mounted into Compose services.
 - Add `CRG047` to flag host backup and sync credentials bind-mounted into

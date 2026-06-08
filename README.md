@@ -51,6 +51,7 @@ It checks for:
 - host database client credential files bind-mounted into services
 - host backup or sync credential files bind-mounted into services
 - host container registry credentials or certificate stores bind-mounted into services
+- host tunnel or proxy credentials bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -151,6 +152,7 @@ jobs:
 | `CRG046` | Service bind-mounts host database client credentials |
 | `CRG047` | Service bind-mounts host backup or sync credentials |
 | `CRG048` | Service bind-mounts host container registry credentials or certificates |
+| `CRG049` | Service bind-mounts host tunnel or proxy credentials |
 
 ## License
 
