@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG056` to flag local LLM runtime data bind-mounted into Compose
+  services.
 - Add `CRG055` to flag password manager vaults or credentials bind-mounted
   into Compose services.
 - Add `CRG054` to flag email client credentials bind-mounted into Compose

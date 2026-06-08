@@ -57,7 +57,8 @@ export const rules = {
   CRG052: 'Service bind-mounts host payment processor credentials',
   CRG053: 'Service bind-mounts host collaboration app credentials',
   CRG054: 'Service bind-mounts host email client credentials',
-  CRG055: 'Service bind-mounts host password manager vaults or credentials'
+  CRG055: 'Service bind-mounts host password manager vaults or credentials',
+  CRG056: 'Service bind-mounts host local LLM runtime data'
 };
 
 const composeNames = new Set([
@@ -646,6 +647,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isLocalLlmRuntimePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG056',
+          `${serviceName} bind-mounts host local LLM runtime data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -749,6 +761,7 @@ function normalizeVolumes(value) {
           !isCollaborationAppCredentialPath(source) &&
           !isEmailClientCredentialPath(source) &&
           !isPasswordManagerCredentialPath(source) &&
+          !isLocalLlmRuntimePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1680,6 +1693,32 @@ function isPasswordManagerCredentialPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Bitwarden|Bitwarden CLI|KeePassXC)(\/|$)/.test(normalized)
+  );
+}
+
+function isLocalLlmRuntimePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.ollama',
+    '.lmstudio',
+    '.cache/lm-studio',
+    '.cache/huggingface/hub',
+    '.cache/llama.cpp',
+    '.config/Jan',
+    'Library/Application Support/Ollama',
+    'Library/Application Support/LM Studio',
+    'Library/Application Support/Jan'
+  ];
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    /^\/home\/[^/]+\/(\.ollama|\.lmstudio|\.cache\/(lm-studio|llama\.cpp)|\.cache\/huggingface\/hub|\.config\/Jan)(\/|$)/.test(normalized) ||
+    /^\/root\/(\.ollama|\.lmstudio|\.cache\/(lm-studio|llama\.cpp)|\.cache\/huggingface\/hub|\.config\/Jan)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/(\.ollama|\.lmstudio|\.cache\/(lm-studio|llama\.cpp)|\.cache\/huggingface\/hub|\.config\/Jan)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Ollama|LM Studio|Jan)(\/|$)/.test(normalized)
   );
 }
 

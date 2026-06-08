@@ -1181,6 +1181,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/vaults/prod.kdbx')));
 });
 
+test('host local LLM runtime data bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  ollama:
+    image: node:20
+    volumes:
+      - \${HOME}/.ollama:/root/.ollama:ro
+      - /tmp/cache:/cache
+  lmstudio:
+    image: node:20
+    volumes:
+      - /home/alice/.lmstudio:/root/.lmstudio:ro
+  huggingface:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/.cache/huggingface/hub
+        target: /models/hf
+  jan:
+    image: node:20
+    volumes:
+      - ~/Library/Application Support/Jan:/host/jan:ro
+  llamacpp:
+    image: node:20
+    volumes:
+      - /root/.cache/llama.cpp:/models/llama.cpp:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG056', 'CRG056', 'CRG056', 'CRG056', 'CRG056']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.ollama')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.lmstudio')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.cache/huggingface/hub')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Jan')));
+  assert(findings.some((finding) => finding.message.includes('/root/.cache/llama.cpp')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

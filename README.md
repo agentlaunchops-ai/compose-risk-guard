@@ -58,6 +58,7 @@ It checks for:
 - host collaboration app credentials bind-mounted into services
 - host email client credentials bind-mounted into services
 - host password manager vaults or credentials bind-mounted into services
+- host local LLM runtime data bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -165,6 +166,7 @@ jobs:
 | `CRG053` | Service bind-mounts host collaboration app credentials |
 | `CRG054` | Service bind-mounts host email client credentials |
 | `CRG055` | Service bind-mounts host password manager vaults or credentials |
+| `CRG056` | Service bind-mounts host local LLM runtime data |
 
 ## License
 
