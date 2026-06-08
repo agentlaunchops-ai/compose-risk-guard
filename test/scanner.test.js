@@ -303,6 +303,39 @@ services:
   assert(findings.some((finding) => finding.message.includes('/home/alice/.docker/config.json')));
 });
 
+test('host cloud provider credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  aws:
+    image: aws:1.0.0
+    volumes:
+      - \${HOME}/.aws:/root/.aws:ro
+      - /tmp/cache:/cache
+  azure:
+    image: azure:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.azure
+        target: /root/.azure
+  gcloud:
+    image: gcloud:1.0.0
+    volumes:
+      - /home/alice/.config/gcloud/application_default_credentials.json:/tmp/gcloud.json:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG031', 'CRG031', 'CRG031']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.aws')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.azure')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/gcloud')));
+});
+
 test('high-risk added Linux capabilities are reported', () => {
   const dir = fixture({
     'compose.yml': `

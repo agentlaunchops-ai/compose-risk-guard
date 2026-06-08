@@ -32,7 +32,8 @@ export const rules = {
   CRG027: 'Service build context escapes the scanned project',
   CRG028: 'Service env_file escapes the scanned project',
   CRG029: 'Compose secret file escapes the scanned project',
-  CRG030: 'Service bind-mounts host Docker client credentials'
+  CRG030: 'Service bind-mounts host Docker client credentials',
+  CRG031: 'Service bind-mounts host cloud provider credentials'
 };
 
 const composeNames = new Set([
@@ -359,6 +360,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isCloudCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG031',
+          `${serviceName} bind-mounts host cloud provider credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (mount.type === 'bind' && isSensitiveHostPath(mount.source)) {
       findings.push(
         finding('CRG006', `${serviceName} bind-mounts sensitive host path ${mount.source}`, filePath, lineFor(text, mount.source))
@@ -422,7 +434,13 @@ function normalizeVolumes(value) {
   return value.flatMap((item) => {
     if (typeof item === 'string') {
       const [source, target, mode = ''] = item.split(':');
-      if (!target || (!source.startsWith('/') && !isSshAgentSocket(source) && !isDockerClientConfigPath(source))) {
+      if (
+        !target ||
+        (!source.startsWith('/') &&
+          !isSshAgentSocket(source) &&
+          !isDockerClientConfigPath(source) &&
+          !isCloudCredentialPath(source))
+      ) {
         return [];
       }
       return [{ type: 'bind', source, target, mode }];
@@ -835,6 +853,31 @@ function isDockerClientConfigPath(source) {
     /^\/home\/[^/]+\/\.docker(\/|$)/.test(normalized) ||
     /^\/root\/\.docker(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/\.docker(\/|$)/.test(normalized)
+  );
+}
+
+function isCloudCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const prefixes = [
+    '~/.aws',
+    '$HOME/.aws',
+    '${HOME}/.aws',
+    '~/.azure',
+    '$HOME/.azure',
+    '${HOME}/.azure',
+    '~/.config/gcloud',
+    '$HOME/.config/gcloud',
+    '${HOME}/.config/gcloud'
+  ];
+  return (
+    prefixes.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`)) ||
+    /^\/home\/[^/]+\/\.(aws|azure)(\/|$)/.test(normalized) ||
+    /^\/root\/\.(aws|azure)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/\.(aws|azure)(\/|$)/.test(normalized) ||
+    /^\/home\/[^/]+\/\.config\/gcloud(\/|$)/.test(normalized) ||
+    /^\/root\/\.config\/gcloud(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/\.config\/gcloud(\/|$)/.test(normalized)
   );
 }
 
