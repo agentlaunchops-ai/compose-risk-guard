@@ -1052,6 +1052,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.config/square')));
 });
 
+test('host collaboration app credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  slack:
+    image: node:20
+    volumes:
+      - \${HOME}/.config/slack:/root/.config/slack:ro
+      - /tmp/cache:/cache
+  discord:
+    image: node:20
+    volumes:
+      - /home/alice/.config/discord:/root/.config/discord:ro
+  teams:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/Microsoft/Teams
+        target: /root/.config/teams
+  mattermost:
+    image: node:20
+    volumes:
+      - ~/.mattermost:/root/.mattermost:ro
+  zoom:
+    image: node:20
+    volumes:
+      - /root/.config/zoom:/root/.config/zoom:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG053', 'CRG053', 'CRG053', 'CRG053', 'CRG053']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/slack')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/discord')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/Microsoft/Teams')));
+  assert(findings.some((finding) => finding.message.includes('~/.mattermost')));
+  assert(findings.some((finding) => finding.message.includes('/root/.config/zoom')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

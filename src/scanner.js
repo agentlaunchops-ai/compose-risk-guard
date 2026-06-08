@@ -54,7 +54,8 @@ export const rules = {
   CRG049: 'Service bind-mounts host tunnel or proxy credentials',
   CRG050: 'Service bind-mounts host deployment platform credentials',
   CRG051: 'Service bind-mounts host observability tool credentials',
-  CRG052: 'Service bind-mounts host payment processor credentials'
+  CRG052: 'Service bind-mounts host payment processor credentials',
+  CRG053: 'Service bind-mounts host collaboration app credentials'
 };
 
 const composeNames = new Set([
@@ -610,6 +611,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isCollaborationAppCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG053',
+          `${serviceName} bind-mounts host collaboration app credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -710,6 +722,7 @@ function normalizeVolumes(value) {
           !isDeploymentPlatformCredentialPath(source) &&
           !isObservabilityCredentialPath(source) &&
           !isPaymentProcessorCredentialPath(source) &&
+          !isCollaborationAppCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1559,6 +1572,33 @@ function isPaymentProcessorCredentialPath(source) {
     new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isCollaborationAppCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/slack',
+    '.config/discord',
+    '.config/teams',
+    '.config/zoom',
+    '.mattermost',
+    'Library/Application Support/Slack',
+    'Library/Application Support/discord',
+    'Library/Application Support/Microsoft/Teams',
+    'Library/Application Support/zoom.us'
+  ];
+  const keyPattern = /(\.config\/(slack|discord|teams|zoom)|\.mattermost)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Slack|discord|Microsoft\/Teams|zoom\.us)(\/|$)/.test(normalized)
   );
 }
 
