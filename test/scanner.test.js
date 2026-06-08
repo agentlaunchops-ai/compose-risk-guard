@@ -733,6 +733,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.gemini')));
 });
 
+test('host browser profile bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  chrome:
+    image: playwright:1.52.0
+    volumes:
+      - \${HOME}/.config/google-chrome:/browser-profile:ro
+      - /tmp/cache:/cache
+  firefox:
+    image: selenium:4.33.0
+    volumes:
+      - /home/alice/.mozilla/firefox:/profiles/firefox:ro
+  brave:
+    image: browser:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/BraveSoftware
+        target: /profiles/brave
+  edge:
+    image: browser:1.0.0
+    volumes:
+      - ~/Library/Application Support/Microsoft Edge:/profiles/edge:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG045', 'CRG045', 'CRG045', 'CRG045']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/google-chrome')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.mozilla/firefox')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/BraveSoftware')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Microsoft Edge')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

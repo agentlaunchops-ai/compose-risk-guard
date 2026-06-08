@@ -46,7 +46,8 @@ export const rules = {
   CRG041: 'Service bind-mounts Terraform or OpenTofu state or credentials',
   CRG042: 'Service bind-mounts SOPS or age secret-management keys',
   CRG043: 'Service bind-mounts cryptocurrency wallet or chain keys',
-  CRG044: 'Service bind-mounts host AI provider credentials'
+  CRG044: 'Service bind-mounts host AI provider credentials',
+  CRG045: 'Service bind-mounts host browser profile data'
 };
 
 const composeNames = new Set([
@@ -514,6 +515,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isBrowserProfilePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG045',
+          `${serviceName} bind-mounts host browser profile data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -606,6 +618,7 @@ function normalizeVolumes(value) {
           !isSecretManagementKeyPath(source) &&
           !isCryptoWalletKeyPath(source) &&
           !isAiProviderCredentialPath(source) &&
+          !isBrowserProfilePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1254,6 +1267,34 @@ function isAiProviderCredentialPath(source) {
     new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isBrowserProfilePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/google-chrome',
+    '.config/chromium',
+    '.config/BraveSoftware',
+    '.config/microsoft-edge',
+    '.mozilla/firefox',
+    'Library/Application Support/Google/Chrome',
+    'Library/Application Support/Chromium',
+    'Library/Application Support/BraveSoftware',
+    'Library/Application Support/Microsoft Edge',
+    'Library/Application Support/Firefox'
+  ];
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    /^\/home\/[^/]+\/\.config\/(google-chrome|chromium|BraveSoftware|microsoft-edge)(\/|$)/.test(normalized) ||
+    /^\/home\/[^/]+\/\.mozilla\/firefox(\/|$)/.test(normalized) ||
+    /^\/root\/\.config\/(google-chrome|chromium|BraveSoftware|microsoft-edge)(\/|$)/.test(normalized) ||
+    /^\/root\/\.mozilla\/firefox(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Google\/Chrome|Chromium|BraveSoftware|Microsoft Edge|Firefox)(\/|$)/.test(normalized)
   );
 }
 
