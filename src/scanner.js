@@ -53,7 +53,8 @@ export const rules = {
   CRG048: 'Service bind-mounts host container registry credentials or certificates',
   CRG049: 'Service bind-mounts host tunnel or proxy credentials',
   CRG050: 'Service bind-mounts host deployment platform credentials',
-  CRG051: 'Service bind-mounts host observability tool credentials'
+  CRG051: 'Service bind-mounts host observability tool credentials',
+  CRG052: 'Service bind-mounts host payment processor credentials'
 };
 
 const composeNames = new Set([
@@ -598,6 +599,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isPaymentProcessorCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG052',
+          `${serviceName} bind-mounts host payment processor credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -697,6 +709,7 @@ function normalizeVolumes(value) {
           !isTunnelOrProxyCredentialPath(source) &&
           !isDeploymentPlatformCredentialPath(source) &&
           !isObservabilityCredentialPath(source) &&
+          !isPaymentProcessorCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1516,6 +1529,29 @@ function isObservabilityCredentialPath(source) {
     '.config/grafana'
   ];
   const keyPattern = /(\.datadog|\.config\/datadog|\.sentryclirc|\.config\/sentry|\.newrelic|\.config\/newrelic|\.config\/honeycomb|\.config\/grafana)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isPaymentProcessorCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.stripe',
+    '.config/stripe',
+    '.config/razorpay',
+    '.config/paddle',
+    '.config/lemonsqueezy',
+    '.config/square'
+  ];
+  const keyPattern = /(\.stripe|\.config\/(stripe|razorpay|paddle|lemonsqueezy|square))(\/|$)/;
   return (
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))

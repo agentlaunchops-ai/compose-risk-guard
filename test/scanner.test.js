@@ -1009,6 +1009,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.config/grafana')));
 });
 
+test('host payment processor credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  stripe:
+    image: stripe/stripe-cli:v1.27.0
+    volumes:
+      - \${HOME}/.config/stripe:/root/.config/stripe:ro
+      - /tmp/cache:/cache
+  stripe-legacy:
+    image: stripe/stripe-cli:v1.27.0
+    volumes:
+      - /home/alice/.stripe:/root/.stripe:ro
+  razorpay:
+    image: razorpay:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/razorpay
+        target: /root/.config/razorpay
+  paddle:
+    image: paddle:1.0.0
+    volumes:
+      - ~/.config/paddle:/root/.config/paddle:ro
+  square:
+    image: square:1.0.0
+    volumes:
+      - /root/.config/square:/root/.config/square:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG052', 'CRG052', 'CRG052', 'CRG052', 'CRG052']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/stripe')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.stripe')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/razorpay')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/paddle')));
+  assert(findings.some((finding) => finding.message.includes('/root/.config/square')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

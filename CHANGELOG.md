@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG052` to flag payment processor credentials bind-mounted into
+  Compose services.
 - Add `CRG051` to flag observability tool credentials bind-mounted into
   Compose services.
 - Add `CRG050` to flag deployment platform credentials bind-mounted into
