@@ -14,6 +14,7 @@ It checks for:
 - bind mounts of sensitive host paths
 - unpinned or `latest` image tags
 - high-risk Linux capabilities added through `cap_add`
+- disabled container security profiles in `security_opt`
 
 ## Install
 
@@ -73,6 +74,7 @@ jobs:
 | `CRG007` | Service image uses `latest` or has no explicit tag/digest |
 | `CRG008` | Secret-like build argument has a literal value |
 | `CRG009` | Service adds a high-risk Linux capability |
+| `CRG010` | Service disables a container security profile |
 
 ## License
 

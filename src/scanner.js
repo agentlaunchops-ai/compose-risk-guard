@@ -11,7 +11,8 @@ export const rules = {
   CRG006: 'Service bind-mounts a sensitive host path',
   CRG007: 'Service image uses latest or has no explicit tag/digest',
   CRG008: 'Secret-like build argument has a literal value',
-  CRG009: 'Service adds a high-risk Linux capability'
+  CRG009: 'Service adds a high-risk Linux capability',
+  CRG010: 'Service disables a container security profile'
 };
 
 const composeNames = new Set([
@@ -91,6 +92,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanHostAccess(service, serviceName, filePath, text));
     findings.push(...scanImage(service, serviceName, filePath, text));
     findings.push(...scanBuildArgs(service, serviceName, filePath, text));
+    findings.push(...scanSecurityOptions(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -259,6 +261,34 @@ function scanBuildArgs(service, serviceName, filePath, text) {
       )
     ];
   });
+}
+
+function scanSecurityOptions(service, serviceName, filePath, text) {
+  const disabledOptions = normalizeSecurityOptions(service.security_opt).filter(isDisabledSecurityOption);
+  return disabledOptions.map((option) =>
+    finding(
+      'CRG010',
+      `${serviceName} disables a container security profile with security_opt: ${option}`,
+      filePath,
+      lineFor(text, option)
+    )
+  );
+}
+
+function normalizeSecurityOptions(value) {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.filter((item) => typeof item === 'string');
+  return [];
+}
+
+function isDisabledSecurityOption(option) {
+  const normalized = option.trim().toLowerCase();
+  return (
+    normalized === 'no-new-privileges:false' ||
+    normalized === 'seccomp:unconfined' ||
+    normalized === 'apparmor:unconfined' ||
+    normalized === 'label:disable'
+  );
 }
 
 function isSecretLiteral(key, value) {

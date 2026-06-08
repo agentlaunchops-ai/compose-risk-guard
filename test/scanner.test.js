@@ -139,6 +139,31 @@ services:
   assert(findings.some((finding) => finding.message.includes('NET_ADMIN')));
 });
 
+test('disabled container security profiles are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  apparmorless:
+    image: app:1.0.0
+    security_opt:
+      - apparmor:unconfined
+      - no-new-privileges:true
+  unlabeled:
+    image: unlabeled:1.0.0
+    security_opt: label:disable
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG010', 'CRG010']
+  );
+  assert(findings.some((finding) => finding.message.includes('apparmor:unconfined')));
+  assert(findings.some((finding) => finding.message.includes('label:disable')));
+});
+
 test('images without explicit non-latest tag or digest are reported', () => {
   const dir = fixture({
     'compose.yml': `
