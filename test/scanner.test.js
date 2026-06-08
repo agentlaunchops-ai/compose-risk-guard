@@ -196,6 +196,32 @@ services:
   assert(findings.some((finding) => finding.message.includes('/dev/dri/renderD128')));
 });
 
+test('host gateway mappings are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "safe.internal:192.0.2.10"
+  worker:
+    image: worker:1.0.0
+    extra_hosts:
+      host.local: host-gateway
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG015', 'CRG015']
+  );
+  assert(findings.some((finding) => finding.message.includes('host.docker.internal')));
+  assert(findings.some((finding) => finding.message.includes('host.local')));
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

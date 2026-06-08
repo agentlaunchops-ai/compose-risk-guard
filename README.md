@@ -19,6 +19,7 @@ It checks for:
 - services explicitly configured to run as root
 - additional host namespace sharing through `cgroup`, `uts`, or `userns_mode`
 - sensitive host devices exposed through `devices`
+- host gateway mappings exposed through `extra_hosts`
 
 ## Install
 
@@ -83,6 +84,7 @@ jobs:
 | `CRG012` | Service explicitly runs as root |
 | `CRG013` | Service shares an additional host namespace |
 | `CRG014` | Service maps a sensitive host device |
+| `CRG015` | Service maps a hostname to the Docker host gateway |
 
 ## License
 

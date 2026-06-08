@@ -16,7 +16,8 @@ export const rules = {
   CRG011: 'Service publishes a sensitive port on all interfaces',
   CRG012: 'Service explicitly runs as root',
   CRG013: 'Service shares an additional host namespace',
-  CRG014: 'Service maps a sensitive host device'
+  CRG014: 'Service maps a sensitive host device',
+  CRG015: 'Service maps a hostname to the Docker host gateway'
 };
 
 const composeNames = new Set([
@@ -125,6 +126,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanPublishedPorts(service, serviceName, filePath, text));
     findings.push(...scanUser(service, serviceName, filePath, text));
     findings.push(...scanDevices(service, serviceName, filePath, text));
+    findings.push(...scanExtraHosts(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -351,6 +353,19 @@ function scanDevices(service, serviceName, filePath, text) {
     );
 }
 
+function scanExtraHosts(service, serviceName, filePath, text) {
+  return normalizeExtraHosts(service.extra_hosts)
+    .filter((entry) => entry.address.toLowerCase() === 'host-gateway')
+    .map((entry) =>
+      finding(
+        'CRG015',
+        `${serviceName} maps ${entry.host} to the Docker host gateway`,
+        filePath,
+        lineFor(text, entry.raw)
+      )
+    );
+}
+
 function normalizeDevices(value) {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
@@ -362,6 +377,28 @@ function normalizeDevices(value) {
     const source = item.source || item.path || item.host_path || item.hostPath || '';
     return source ? [{ source: String(source), raw: String(source) }] : [];
   });
+}
+
+function normalizeExtraHosts(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      if (typeof item !== 'string') return [];
+      const separator = item.includes('=') ? '=' : ':';
+      const [host, ...rest] = item.split(separator);
+      const address = rest.join(separator).trim();
+      if (!host || !address) return [];
+      return [{ host: host.trim(), address, raw: item }];
+    });
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).map(([host, address]) => ({
+      host,
+      address: String(address).trim(),
+      raw: String(host)
+    }));
+  }
+  return [];
 }
 
 function normalizePorts(value) {
