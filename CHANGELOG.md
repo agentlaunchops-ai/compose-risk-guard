@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG034` to flag host Git and SSH credential files or directories
+  bind-mounted into Compose services.
 - Add `CRG033` to flag host package manager credential files bind-mounted into
   Compose services.
 - Add `CRG032` to flag host Kubernetes credential files or directories

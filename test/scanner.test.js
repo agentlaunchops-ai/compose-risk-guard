@@ -407,6 +407,41 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.cargo/credentials')));
 });
 
+test('host Git and SSH credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  git:
+    image: alpine/git:2.49.0
+    volumes:
+      - \${HOME}/.gitconfig:/root/.gitconfig:ro
+      - /home/alice/.git-credentials:/root/.git-credentials:ro
+      - /tmp/cache:/cache
+  gh:
+    image: ghcr.io/cli/cli:2.74.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/gh
+        target: /root/.config/gh
+  ssh:
+    image: openssh-client:1.0.0
+    volumes:
+      - ~/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG034', 'CRG034', 'CRG034', 'CRG034']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.gitconfig')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.git-credentials')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/gh')));
+  assert(findings.some((finding) => finding.message.includes('~/.ssh/id_ed25519')));
+});
+
 test('high-risk added Linux capabilities are reported', () => {
   const dir = fixture({
     'compose.yml': `

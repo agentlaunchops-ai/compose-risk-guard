@@ -35,7 +35,8 @@ export const rules = {
   CRG030: 'Service bind-mounts host Docker client credentials',
   CRG031: 'Service bind-mounts host cloud provider credentials',
   CRG032: 'Service bind-mounts host Kubernetes credentials',
-  CRG033: 'Service bind-mounts host package manager credentials'
+  CRG033: 'Service bind-mounts host package manager credentials',
+  CRG034: 'Service bind-mounts host Git or SSH credentials'
 };
 
 const composeNames = new Set([
@@ -395,6 +396,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isGitOrSshCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG034',
+          `${serviceName} bind-mounts host Git or SSH credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (mount.type === 'bind' && isSensitiveHostPath(mount.source)) {
       findings.push(
         finding('CRG006', `${serviceName} bind-mounts sensitive host path ${mount.source}`, filePath, lineFor(text, mount.source))
@@ -465,7 +477,8 @@ function normalizeVolumes(value) {
           !isDockerClientConfigPath(source) &&
           !isCloudCredentialPath(source) &&
           !isKubernetesCredentialPath(source) &&
-          !isPackageManagerCredentialPath(source))
+          !isPackageManagerCredentialPath(source) &&
+          !isGitOrSshCredentialPath(source))
       ) {
         return [];
       }
@@ -935,6 +948,21 @@ function isPackageManagerCredentialPath(source) {
     /^\/home\/[^/]+\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized) ||
     /^\/root\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized)
+  );
+}
+
+function isGitOrSshCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = ['.gitconfig', '.git-credentials', '.config/gh', '.config/hub', '.ssh'];
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    /^\/home\/[^/]+\/(\.gitconfig|\.git-credentials|\.config\/(gh|hub)|\.ssh)(\/|$)/.test(normalized) ||
+    /^\/root\/(\.gitconfig|\.git-credentials|\.config\/(gh|hub)|\.ssh)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/(\.gitconfig|\.git-credentials|\.config\/(gh|hub)|\.ssh)(\/|$)/.test(normalized)
   );
 }
 
