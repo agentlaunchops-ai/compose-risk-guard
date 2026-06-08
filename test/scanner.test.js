@@ -114,6 +114,31 @@ services:
   assert.deepEqual(ids, ['CRG003', 'CRG004', 'CRG005', 'CRG005', 'CRG006', 'CRG007']);
 });
 
+test('high-risk added Linux capabilities are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  debugger:
+    image: debugger:1.0.0
+    cap_add:
+      - SYS_PTRACE
+      - CHOWN
+  nettool:
+    image: nettool:1.0.0
+    cap_add: cap_net_admin
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG009', 'CRG009']
+  );
+  assert(findings.some((finding) => finding.message.includes('SYS_PTRACE')));
+  assert(findings.some((finding) => finding.message.includes('NET_ADMIN')));
+});
+
 test('images without explicit non-latest tag or digest are reported', () => {
   const dir = fixture({
     'compose.yml': `

@@ -13,6 +13,7 @@ It checks for:
 - host namespace sharing through `network_mode`, `pid`, or `ipc`
 - bind mounts of sensitive host paths
 - unpinned or `latest` image tags
+- high-risk Linux capabilities added through `cap_add`
 
 ## Install
 
@@ -71,6 +72,7 @@ jobs:
 | `CRG006` | Service bind-mounts a sensitive host path |
 | `CRG007` | Service image uses `latest` or has no explicit tag/digest |
 | `CRG008` | Secret-like build argument has a literal value |
+| `CRG009` | Service adds a high-risk Linux capability |
 
 ## License
 

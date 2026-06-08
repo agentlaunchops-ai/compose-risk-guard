@@ -10,7 +10,8 @@ export const rules = {
   CRG005: 'Service shares a host namespace',
   CRG006: 'Service bind-mounts a sensitive host path',
   CRG007: 'Service image uses latest or has no explicit tag/digest',
-  CRG008: 'Secret-like build argument has a literal value'
+  CRG008: 'Secret-like build argument has a literal value',
+  CRG009: 'Service adds a high-risk Linux capability'
 };
 
 const composeNames = new Set([
@@ -31,6 +32,14 @@ const sensitiveHostPaths = [
   '/usr/lib',
   '/boot'
 ];
+const riskyCapabilities = new Set([
+  'SYS_ADMIN',
+  'SYS_MODULE',
+  'SYS_PTRACE',
+  'NET_ADMIN',
+  'DAC_READ_SEARCH',
+  'DAC_OVERRIDE'
+]);
 
 export function discoverComposeFiles(rootDir) {
   const found = [];
@@ -173,7 +182,27 @@ function scanHostAccess(service, serviceName, filePath, text) {
       findings.push(finding('CRG005', `${serviceName} uses ${key}: host`, filePath, lineFor(text, key)));
     }
   }
+
+  for (const capability of normalizeCapabilities(service.cap_add)) {
+    if (!riskyCapabilities.has(capability)) continue;
+    findings.push(
+      finding(
+        'CRG009',
+        `${serviceName} adds high-risk Linux capability ${capability}`,
+        filePath,
+        lineFor(text, capability)
+      )
+    );
+  }
   return findings;
+}
+
+function normalizeCapabilities(value) {
+  const entries = Array.isArray(value) ? value : [value];
+  return entries
+    .filter((item) => typeof item === 'string')
+    .map((item) => item.trim().toUpperCase().replace(/^CAP_/, ''))
+    .filter(Boolean);
 }
 
 function normalizeVolumes(value) {
