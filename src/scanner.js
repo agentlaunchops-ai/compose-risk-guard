@@ -34,7 +34,8 @@ export const rules = {
   CRG029: 'Compose secret file escapes the scanned project',
   CRG030: 'Service bind-mounts host Docker client credentials',
   CRG031: 'Service bind-mounts host cloud provider credentials',
-  CRG032: 'Service bind-mounts host Kubernetes credentials'
+  CRG032: 'Service bind-mounts host Kubernetes credentials',
+  CRG033: 'Service bind-mounts host package manager credentials'
 };
 
 const composeNames = new Set([
@@ -383,6 +384,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isPackageManagerCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG033',
+          `${serviceName} bind-mounts host package manager credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (mount.type === 'bind' && isSensitiveHostPath(mount.source)) {
       findings.push(
         finding('CRG006', `${serviceName} bind-mounts sensitive host path ${mount.source}`, filePath, lineFor(text, mount.source))
@@ -452,7 +464,8 @@ function normalizeVolumes(value) {
           !isSshAgentSocket(source) &&
           !isDockerClientConfigPath(source) &&
           !isCloudCredentialPath(source) &&
-          !isKubernetesCredentialPath(source))
+          !isKubernetesCredentialPath(source) &&
+          !isPackageManagerCredentialPath(source))
       ) {
         return [];
       }
@@ -907,6 +920,21 @@ function isKubernetesCredentialPath(source) {
     /^\/home\/[^/]+\/\.kube(\/|$)/.test(normalized) ||
     /^\/root\/\.kube(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/\.kube(\/|$)/.test(normalized)
+  );
+}
+
+function isPackageManagerCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homeFiles = ['.npmrc', '.pypirc', '.gem/credentials', '.cargo/credentials', '.netrc'];
+  return (
+    homePrefixes.some((home) =>
+      homeFiles.some((file) => normalized === `${home}/${file}` || normalized.startsWith(`${home}/${file}/`))
+    ) ||
+    /^\/home\/[^/]+\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized) ||
+    /^\/root\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized)
   );
 }
 

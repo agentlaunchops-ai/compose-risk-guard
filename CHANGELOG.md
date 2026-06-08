@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG033` to flag host package manager credential files bind-mounted into
+  Compose services.
 - Add `CRG032` to flag host Kubernetes credential files or directories
   bind-mounted into Compose services.
 - Add `CRG031` to flag host cloud provider credential files or directories

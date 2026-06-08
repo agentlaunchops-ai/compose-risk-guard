@@ -369,6 +369,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('/Users/alice/.kube/cache')));
 });
 
+test('host package manager credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  node:
+    image: node:20
+    volumes:
+      - \${HOME}/.npmrc:/root/.npmrc:ro
+      - /tmp/cache:/cache
+  python:
+    image: python:3.12
+    volumes:
+      - /home/alice/.pypirc:/tmp/pypirc:ro
+  ruby:
+    image: ruby:3.3
+    volumes:
+      - type: bind
+        source: /Users/alice/.gem/credentials
+        target: /root/.gem/credentials
+  rust:
+    image: rust:1.85
+    volumes:
+      - ~/.cargo/credentials:/root/.cargo/credentials:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG033', 'CRG033', 'CRG033', 'CRG033']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.npmrc')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.pypirc')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.gem/credentials')));
+  assert(findings.some((finding) => finding.message.includes('~/.cargo/credentials')));
+});
+
 test('high-risk added Linux capabilities are reported', () => {
   const dir = fixture({
     'compose.yml': `
