@@ -49,7 +49,8 @@ export const rules = {
   CRG044: 'Service bind-mounts host AI provider credentials',
   CRG045: 'Service bind-mounts host browser profile data',
   CRG046: 'Service bind-mounts host database client credentials',
-  CRG047: 'Service bind-mounts host backup or sync credentials'
+  CRG047: 'Service bind-mounts host backup or sync credentials',
+  CRG048: 'Service bind-mounts host container registry credentials or certificates'
 };
 
 const composeNames = new Set([
@@ -550,6 +551,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isContainerRegistryCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG048',
+          `${serviceName} bind-mounts host container registry credentials or certificates from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -645,6 +657,7 @@ function normalizeVolumes(value) {
           !isBrowserProfilePath(source) &&
           !isDatabaseClientCredentialPath(source) &&
           !isBackupOrSyncCredentialPath(source) &&
+          !isContainerRegistryCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1361,6 +1374,31 @@ function isBackupOrSyncCredentialPath(source) {
   ];
   const keyPattern = /(\.config\/rclone\/rclone\.conf|\.config\/restic|\.restic|\.borg|\.config\/borg)(\/|$)/;
   return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isContainerRegistryCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/containers/auth.json',
+    '.config/containers/certs.d',
+    '.local/share/containers/auth.json'
+  ];
+  const keyPattern = /(\.config\/containers\/(auth\.json|certs\.d)|\.local\/share\/containers\/auth\.json)(\/|$)/;
+  return (
+    normalized === '/etc/containers/auth.json' ||
+    normalized.startsWith('/etc/containers/certs.d/') ||
+    normalized === '/etc/containers/certs.d' ||
+    normalized.startsWith('/etc/docker/certs.d/') ||
+    normalized === '/etc/docker/certs.d' ||
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
     ) ||

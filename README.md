@@ -50,6 +50,7 @@ It checks for:
 - host browser profile data bind-mounted into services
 - host database client credential files bind-mounted into services
 - host backup or sync credential files bind-mounted into services
+- host container registry credentials or certificate stores bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -149,6 +150,7 @@ jobs:
 | `CRG045` | Service bind-mounts host browser profile data |
 | `CRG046` | Service bind-mounts host database client credentials |
 | `CRG047` | Service bind-mounts host backup or sync credentials |
+| `CRG048` | Service bind-mounts host container registry credentials or certificates |
 
 ## License
 

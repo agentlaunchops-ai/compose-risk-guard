@@ -847,6 +847,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.restic')));
 });
 
+test('host container registry credentials and certificates bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  podman:
+    image: quay.io/podman/stable:v5.5
+    volumes:
+      - \${HOME}/.config/containers/auth.json:/run/auth.json:ro
+      - /tmp/cache:/cache
+  skopeo:
+    image: quay.io/skopeo/stable:v1.18
+    volumes:
+      - /home/alice/.config/containers/certs.d:/etc/containers/certs.d:ro
+  registry:
+    image: registry:2.8
+    volumes:
+      - type: bind
+        source: /etc/docker/certs.d/private.registry
+        target: /certs/private.registry
+  buildah:
+    image: quay.io/buildah/stable:v1.40
+    volumes:
+      - ~/.local/share/containers/auth.json:/run/user-auth.json:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG048', 'CRG048', 'CRG048', 'CRG048']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/containers/auth.json')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/containers/certs.d')));
+  assert(findings.some((finding) => finding.message.includes('/etc/docker/certs.d/private.registry')));
+  assert(findings.some((finding) => finding.message.includes('~/.local/share/containers/auth.json')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
