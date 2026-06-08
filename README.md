@@ -17,6 +17,7 @@ It checks for:
 - disabled container security profiles in `security_opt`
 - sensitive service ports published on all interfaces
 - services explicitly configured to run as root
+- additional host namespace sharing through `cgroup`, `uts`, or `userns_mode`
 
 ## Install
 
@@ -79,6 +80,7 @@ jobs:
 | `CRG010` | Service disables a container security profile |
 | `CRG011` | Service publishes a sensitive port on all interfaces |
 | `CRG012` | Service explicitly runs as root |
+| `CRG013` | Service shares an additional host namespace |
 
 ## License
 

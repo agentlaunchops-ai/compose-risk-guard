@@ -139,6 +139,34 @@ services:
   assert(findings.some((finding) => finding.message.includes('NET_ADMIN')));
 });
 
+test('additional host namespace sharing is reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  kernelview:
+    image: kernelview:1.0.0
+    cgroup: host
+    uts: host
+  isolated:
+    image: isolated:1.0.0
+    userns_mode: private
+  userns:
+    image: userns:1.0.0
+    userns_mode: host
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG013', 'CRG013', 'CRG013']
+  );
+  assert(findings.some((finding) => finding.message.includes('cgroup')));
+  assert(findings.some((finding) => finding.message.includes('uts')));
+  assert(findings.some((finding) => finding.message.includes('userns_mode')));
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

@@ -14,7 +14,8 @@ export const rules = {
   CRG009: 'Service adds a high-risk Linux capability',
   CRG010: 'Service disables a container security profile',
   CRG011: 'Service publishes a sensitive port on all interfaces',
-  CRG012: 'Service explicitly runs as root'
+  CRG012: 'Service explicitly runs as root',
+  CRG013: 'Service shares an additional host namespace'
 };
 
 const composeNames = new Set([
@@ -203,6 +204,12 @@ function scanHostAccess(service, serviceName, filePath, text) {
   for (const key of ['network_mode', 'pid', 'ipc']) {
     if (service[key] === 'host') {
       findings.push(finding('CRG005', `${serviceName} uses ${key}: host`, filePath, lineFor(text, key)));
+    }
+  }
+
+  for (const key of ['cgroup', 'uts', 'userns_mode']) {
+    if (service[key] === 'host') {
+      findings.push(finding('CRG013', `${serviceName} uses ${key}: host`, filePath, lineFor(text, key)));
     }
   }
 
