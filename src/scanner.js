@@ -30,7 +30,8 @@ export const rules = {
   CRG025: 'Service label contains a secret-like literal',
   CRG026: 'Service points Docker clients at an insecure TCP daemon',
   CRG027: 'Service build context escapes the scanned project',
-  CRG028: 'Service env_file escapes the scanned project'
+  CRG028: 'Service env_file escapes the scanned project',
+  CRG029: 'Compose secret file escapes the scanned project'
 };
 
 const composeNames = new Set([
@@ -156,6 +157,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
 
   const services = doc.services && typeof doc.services === 'object' ? doc.services : {};
   const findings = [];
+  findings.push(...scanSecretFiles(doc, filePath, rootDir, text));
   for (const [serviceName, service] of Object.entries(services)) {
     if (!service || typeof service !== 'object') continue;
     findings.push(...scanEnvironment(service, serviceName, filePath, text));
@@ -176,6 +178,25 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanLabels(service, serviceName, filePath, text));
   }
   return findings;
+}
+
+function scanSecretFiles(doc, filePath, rootDir, text) {
+  const secrets = doc.secrets && typeof doc.secrets === 'object' ? doc.secrets : {};
+  return Object.entries(secrets).flatMap(([secretName, secret]) => {
+    if (!secret || typeof secret !== 'object' || typeof secret.file !== 'string') return [];
+    const ref = secret.file.trim();
+    if (!ref || substitutionPattern.test(ref)) return [];
+    const secretPath = path.resolve(path.dirname(filePath), ref);
+    if (isSubpath(rootDir, secretPath)) return [];
+    return [
+      finding(
+        'CRG029',
+        `secret ${secretName} reads file ${ref} outside the scanned project`,
+        filePath,
+        lineFor(text, ref)
+      )
+    ];
+  });
 }
 
 function scanEnvironment(service, serviceName, filePath, text) {

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG029` to flag Compose secret `file` references that escape the scanned
+  project.
 - Add `CRG028` to flag service `env_file` references that escape the scanned
   project.
 - Add `CRG027` to flag service build contexts that escape the scanned project.

@@ -91,6 +91,37 @@ services:
   assert.match(findings[0].message, /prod\.env/);
 });
 
+test('secret files outside the scanned project are reported', () => {
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-risk-guard-secrets-'));
+  fs.writeFileSync(path.join(outsideDir, 'prod.key'), 'secret\n');
+
+  const dir = fixture({
+    'compose/compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    secrets:
+      - prod_key
+      - local_key
+      - env_key
+secrets:
+  prod_key:
+    file: ${path.join(outsideDir, 'prod.key')}
+  local_key:
+    file: ../local.key
+  env_key:
+    file: \${COMPOSE_SECRET_FILE}
+`,
+    'local.key': 'local-secret\n'
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, 'CRG029');
+  assert.match(findings[0].message, /prod_key/);
+  assert.match(findings[0].message, /prod\.key/);
+});
+
 test('literal secret build args are reported', () => {
   const dir = fixture({
     'compose.yml': `

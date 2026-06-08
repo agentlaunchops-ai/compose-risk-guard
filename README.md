@@ -33,6 +33,7 @@ It checks for:
 - Docker clients pointed at insecure TCP daemons
 - build contexts that escape the scanned project
 - env files that escape the scanned project
+- secret files that escape the scanned project
 
 ## Install
 
@@ -111,6 +112,7 @@ jobs:
 | `CRG026` | Service points Docker clients at an insecure TCP daemon |
 | `CRG027` | Service build context escapes the scanned project |
 | `CRG028` | Service `env_file` escapes the scanned project |
+| `CRG029` | Compose secret `file` escapes the scanned project |
 
 ## License
 
