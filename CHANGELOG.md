@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG037` to flag host build tool credential files bind-mounted into
+  Compose services.
 - Add `CRG036` to flag Compose config `file` references that escape the scanned
   project.
 - Add `CRG035` to flag services that join another container's network, PID, or

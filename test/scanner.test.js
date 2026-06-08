@@ -437,6 +437,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.cargo/credentials')));
 });
 
+test('host build tool credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  maven:
+    image: maven:3.9.9
+    volumes:
+      - \${HOME}/.m2/settings.xml:/root/.m2/settings.xml:ro
+      - /tmp/cache:/cache
+  gradle:
+    image: gradle:8.14
+    volumes:
+      - /home/alice/.gradle/gradle.properties:/home/gradle/.gradle/gradle.properties:ro
+  nuget:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.nuget/NuGet/NuGet.Config
+        target: /root/.nuget/NuGet/NuGet.Config
+  composer:
+    image: composer:2.8
+    volumes:
+      - ~/.composer/auth.json:/tmp/auth.json:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG037', 'CRG037', 'CRG037', 'CRG037']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.m2/settings.xml')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.gradle/gradle.properties')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.nuget/NuGet/NuGet.Config')));
+  assert(findings.some((finding) => finding.message.includes('~/.composer/auth.json')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

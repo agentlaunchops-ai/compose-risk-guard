@@ -38,7 +38,8 @@ export const rules = {
   CRG033: 'Service bind-mounts host package manager credentials',
   CRG034: 'Service bind-mounts host Git or SSH credentials',
   CRG035: 'Service joins another container namespace',
-  CRG036: 'Compose config file escapes the scanned project'
+  CRG036: 'Compose config file escapes the scanned project',
+  CRG037: 'Service bind-mounts host build tool credentials'
 };
 
 const composeNames = new Set([
@@ -418,6 +419,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isBuildToolCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG037',
+          `${serviceName} bind-mounts host build tool credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -502,6 +514,7 @@ function normalizeVolumes(value) {
           !isCloudCredentialPath(source) &&
           !isKubernetesCredentialPath(source) &&
           !isPackageManagerCredentialPath(source) &&
+          !isBuildToolCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -976,6 +989,29 @@ function isPackageManagerCredentialPath(source) {
     /^\/home\/[^/]+\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized) ||
     /^\/root\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/(\.npmrc|\.pypirc|\.gem\/credentials|\.cargo\/credentials|\.netrc)(\/|$)/.test(normalized)
+  );
+}
+
+function isBuildToolCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.m2/settings.xml',
+    '.gradle/gradle.properties',
+    '.sbt/.credentials',
+    '.nuget/NuGet/NuGet.Config',
+    '.config/NuGet/NuGet.Config',
+    '.composer/auth.json'
+  ];
+  const linuxPattern = /(\.m2\/settings\.xml|\.gradle\/gradle\.properties|\.sbt\/\.credentials|\.nuget\/NuGet\/NuGet\.Config|\.config\/NuGet\/NuGet\.Config|\.composer\/auth\.json)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${linuxPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${linuxPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${linuxPattern.source}`).test(normalized)
   );
 }
 
