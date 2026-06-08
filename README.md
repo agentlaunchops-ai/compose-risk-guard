@@ -53,6 +53,7 @@ It checks for:
 - host container registry credentials or certificate stores bind-mounted into services
 - host tunnel or proxy credentials bind-mounted into services
 - host deployment platform credentials bind-mounted into services
+- host observability tool credentials bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -155,6 +156,7 @@ jobs:
 | `CRG048` | Service bind-mounts host container registry credentials or certificates |
 | `CRG049` | Service bind-mounts host tunnel or proxy credentials |
 | `CRG050` | Service bind-mounts host deployment platform credentials |
+| `CRG051` | Service bind-mounts host observability tool credentials |
 
 ## License
 

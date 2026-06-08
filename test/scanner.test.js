@@ -966,6 +966,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.railway')));
 });
 
+test('host observability tool credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  datadog:
+    image: datadog/agent:7.66.1
+    volumes:
+      - \${HOME}/.datadog:/run/datadog-creds:ro
+      - /tmp/cache:/cache
+  sentry:
+    image: getsentry/sentry-cli:2.44.0
+    volumes:
+      - /home/alice/.sentryclirc:/root/.sentryclirc:ro
+  newrelic:
+    image: newrelic:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.newrelic
+        target: /root/.newrelic
+  honeycomb:
+    image: honeycombio/buildevents:0.11.3
+    volumes:
+      - ~/.config/honeycomb:/root/.config/honeycomb:ro
+  grafana:
+    image: grafana:1.0.0
+    volumes:
+      - /root/.config/grafana:/root/.config/grafana:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG051', 'CRG051', 'CRG051', 'CRG051', 'CRG051']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.datadog')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.sentryclirc')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.newrelic')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/honeycomb')));
+  assert(findings.some((finding) => finding.message.includes('/root/.config/grafana')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
