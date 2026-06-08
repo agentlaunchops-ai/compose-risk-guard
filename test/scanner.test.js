@@ -546,6 +546,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.zsh_history')));
 });
 
+test('host password stores and PGP secrets bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  pass:
+    image: alpine:3.22
+    volumes:
+      - \${HOME}/.password-store:/root/.password-store:ro
+      - /tmp/cache:/cache
+  gpg:
+    image: debian:12
+    volumes:
+      - /home/alice/.gnupg:/root/.gnupg:ro
+  op:
+    image: 1password/op:2.31.1
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/1Password
+        target: /root/.config/1Password
+  gopass:
+    image: gopasspw/gopass:1.15.15
+    volumes:
+      - ~/.config/gopass:/root/.config/gopass:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG040', 'CRG040', 'CRG040', 'CRG040']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.password-store')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.gnupg')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/1Password')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/gopass')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

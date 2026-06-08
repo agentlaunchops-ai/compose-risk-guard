@@ -41,7 +41,8 @@ export const rules = {
   CRG036: 'Compose config file escapes the scanned project',
   CRG037: 'Service bind-mounts host build tool credentials',
   CRG038: 'Service bind-mounts dotenv credential files',
-  CRG039: 'Service bind-mounts host shell or REPL history files'
+  CRG039: 'Service bind-mounts host shell or REPL history files',
+  CRG040: 'Service bind-mounts host password store or PGP secrets'
 };
 
 const composeNames = new Set([
@@ -454,6 +455,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isPasswordStorePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG040',
+          `${serviceName} bind-mounts host password store or PGP secrets from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -541,6 +553,7 @@ function normalizeVolumes(value) {
           !isBuildToolCredentialPath(source) &&
           !isDotenvCredentialPath(source) &&
           !isShellHistoryPath(source) &&
+          !isPasswordStorePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1073,6 +1086,28 @@ function isShellHistoryPath(source) {
     /^\/root\/\.node_repl_history(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/\.(ash|bash|fish|mysql|psql|python|rediscli|sqlite|zsh)_history(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/\.node_repl_history(\/|$)/.test(normalized)
+  );
+}
+
+function isPasswordStorePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.gnupg',
+    '.password-store',
+    '.local/share/password-store',
+    '.local/share/gnupg',
+    '.config/gopass',
+    '.config/1Password'
+  ];
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    /^\/home\/[^/]+\/(\.gnupg|\.password-store|\.local\/share\/(password-store|gnupg)|\.config\/(gopass|1Password))(\/|$)/.test(normalized) ||
+    /^\/root\/(\.gnupg|\.password-store|\.local\/share\/(password-store|gnupg)|\.config\/(gopass|1Password))(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/(\.gnupg|\.password-store|\.local\/share\/(password-store|gnupg)|\.config\/(gopass|1Password))(\/|$)/.test(normalized)
   );
 }
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG040` to flag host password stores and PGP secrets bind-mounted into
+  Compose services.
 - Add `CRG039` to flag host shell and REPL history files bind-mounted into
   Compose services.
 - Add `CRG038` to flag dotenv credential files bind-mounted into Compose
