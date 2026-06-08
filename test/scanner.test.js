@@ -336,6 +336,39 @@ services:
   assert(findings.some((finding) => finding.message.includes('/home/alice/.config/gcloud')));
 });
 
+test('host Kubernetes credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  kubectl:
+    image: kubectl:1.0.0
+    volumes:
+      - \${HOME}/.kube/config:/root/.kube/config:ro
+      - /tmp/cache:/cache
+  linux:
+    image: linux:1.0.0
+    volumes:
+      - /home/alice/.kube:/host-kube:ro
+  desktop:
+    image: desktop:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.kube/cache
+        target: /root/.kube/cache
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG032', 'CRG032', 'CRG032']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.kube/config')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.kube')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.kube/cache')));
+});
+
 test('high-risk added Linux capabilities are reported', () => {
   const dir = fixture({
     'compose.yml': `

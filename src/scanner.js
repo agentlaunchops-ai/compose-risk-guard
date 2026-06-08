@@ -33,7 +33,8 @@ export const rules = {
   CRG028: 'Service env_file escapes the scanned project',
   CRG029: 'Compose secret file escapes the scanned project',
   CRG030: 'Service bind-mounts host Docker client credentials',
-  CRG031: 'Service bind-mounts host cloud provider credentials'
+  CRG031: 'Service bind-mounts host cloud provider credentials',
+  CRG032: 'Service bind-mounts host Kubernetes credentials'
 };
 
 const composeNames = new Set([
@@ -371,6 +372,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isKubernetesCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG032',
+          `${serviceName} bind-mounts host Kubernetes credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (mount.type === 'bind' && isSensitiveHostPath(mount.source)) {
       findings.push(
         finding('CRG006', `${serviceName} bind-mounts sensitive host path ${mount.source}`, filePath, lineFor(text, mount.source))
@@ -439,7 +451,8 @@ function normalizeVolumes(value) {
         (!source.startsWith('/') &&
           !isSshAgentSocket(source) &&
           !isDockerClientConfigPath(source) &&
-          !isCloudCredentialPath(source))
+          !isCloudCredentialPath(source) &&
+          !isKubernetesCredentialPath(source))
       ) {
         return [];
       }
@@ -878,6 +891,22 @@ function isCloudCredentialPath(source) {
     /^\/home\/[^/]+\/\.config\/gcloud(\/|$)/.test(normalized) ||
     /^\/root\/\.config\/gcloud(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/\.config\/gcloud(\/|$)/.test(normalized)
+  );
+}
+
+function isKubernetesCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const prefixes = [
+    '~/.kube',
+    '$HOME/.kube',
+    '${HOME}/.kube'
+  ];
+  return (
+    prefixes.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`)) ||
+    /^\/home\/[^/]+\/\.kube(\/|$)/.test(normalized) ||
+    /^\/root\/\.kube(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/\.kube(\/|$)/.test(normalized)
   );
 }
 
