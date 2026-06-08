@@ -58,7 +58,8 @@ export const rules = {
   CRG053: 'Service bind-mounts host collaboration app credentials',
   CRG054: 'Service bind-mounts host email client credentials',
   CRG055: 'Service bind-mounts host password manager vaults or credentials',
-  CRG056: 'Service bind-mounts host local LLM runtime data'
+  CRG056: 'Service bind-mounts host local LLM runtime data',
+  CRG057: 'Service bind-mounts host API client credentials'
 };
 
 const composeNames = new Set([
@@ -658,6 +659,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isApiClientCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG057',
+          `${serviceName} bind-mounts host API client credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -762,6 +774,7 @@ function normalizeVolumes(value) {
           !isEmailClientCredentialPath(source) &&
           !isPasswordManagerCredentialPath(source) &&
           !isLocalLlmRuntimePath(source) &&
+          !isApiClientCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1719,6 +1732,34 @@ function isLocalLlmRuntimePath(source) {
     /^\/root\/(\.ollama|\.lmstudio|\.cache\/(lm-studio|llama\.cpp)|\.cache\/huggingface\/hub|\.config\/Jan)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/(\.ollama|\.lmstudio|\.cache\/(lm-studio|llama\.cpp)|\.cache\/huggingface\/hub|\.config\/Jan)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Ollama|LM Studio|Jan)(\/|$)/.test(normalized)
+  );
+}
+
+function isApiClientCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/httpie',
+    '.config/postman',
+    '.config/Insomnia',
+    '.config/insomnia',
+    '.insomnia',
+    '.bruno',
+    '.hoppscotch',
+    '.curlrc',
+    '.wgetrc'
+  ];
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    /^\/home\/[^/]+\/\.config\/(httpie|postman|Insomnia|insomnia)(\/|$)/.test(normalized) ||
+    /^\/home\/[^/]+\/(\.insomnia|\.bruno|\.hoppscotch|\.curlrc|\.wgetrc)(\/|$)/.test(normalized) ||
+    /^\/root\/\.config\/(httpie|postman|Insomnia|insomnia)(\/|$)/.test(normalized) ||
+    /^\/root\/(\.insomnia|\.bruno|\.hoppscotch|\.curlrc|\.wgetrc)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/\.config\/(httpie|postman|Insomnia|insomnia)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/(\.insomnia|\.bruno|\.hoppscotch|\.curlrc|\.wgetrc)(\/|$)/.test(normalized)
   );
 }
 

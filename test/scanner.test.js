@@ -1224,6 +1224,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.cache/llama.cpp')));
 });
 
+test('host API client credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  httpie:
+    image: node:20
+    volumes:
+      - \${HOME}/.config/httpie:/root/.config/httpie:ro
+      - /tmp/cache:/cache
+  postman:
+    image: node:20
+    volumes:
+      - /home/alice/.config/postman:/root/.config/postman:ro
+  insomnia:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/Insomnia
+        target: /root/.config/Insomnia
+  bruno:
+    image: node:20
+    volumes:
+      - ~/.bruno:/root/.bruno:ro
+  curl:
+    image: curlimages/curl:8.14.1
+    volumes:
+      - /root/.curlrc:/root/.curlrc:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG057', 'CRG057', 'CRG057', 'CRG057', 'CRG057']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/httpie')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/postman')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/Insomnia')));
+  assert(findings.some((finding) => finding.message.includes('~/.bruno')));
+  assert(findings.some((finding) => finding.message.includes('/root/.curlrc')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
