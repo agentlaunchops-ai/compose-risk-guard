@@ -114,6 +114,36 @@ services:
   assert.deepEqual(ids, ['CRG003', 'CRG004', 'CRG005', 'CRG005', 'CRG006', 'CRG007']);
 });
 
+test('container runtime socket bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  builder:
+    image: builder:1.0.0
+    volumes:
+      - /run/docker.sock:/run/docker.sock
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock
+      - /tmp/app.sock:/tmp/app.sock
+  podman:
+    image: podman:1.0.0
+    volumes:
+      - type: bind
+        source: /run/podman/podman.sock
+        target: /run/podman/podman.sock
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG020', 'CRG020', 'CRG020']
+  );
+  assert(findings.some((finding) => finding.message.includes('/run/docker.sock')));
+  assert(findings.some((finding) => finding.message.includes('/run/containerd/containerd.sock')));
+  assert(findings.some((finding) => finding.message.includes('/run/podman/podman.sock')));
+});
+
 test('high-risk added Linux capabilities are reported', () => {
   const dir = fixture({
     'compose.yml': `

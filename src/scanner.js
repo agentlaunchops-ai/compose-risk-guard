@@ -21,7 +21,8 @@ export const rules = {
   CRG016: 'Service disables TLS certificate verification',
   CRG017: 'Service sets a high-risk kernel sysctl',
   CRG018: 'Service disables its container healthcheck',
-  CRG019: 'Service disables container logging'
+  CRG019: 'Service disables container logging',
+  CRG020: 'Service bind-mounts a container runtime socket'
 };
 
 const composeNames = new Set([
@@ -74,6 +75,13 @@ const sensitiveDevices = [
   '/dev/kvm',
   '/dev/mem',
   '/dev/net/tun'
+];
+const containerRuntimeSockets = [
+  '/run/containerd/containerd.sock',
+  '/run/crio/crio.sock',
+  '/run/docker.sock',
+  '/run/podman/podman.sock',
+  '/var/run/podman/podman.sock'
 ];
 const insecureTlsEnv = {
   NODE_TLS_REJECT_UNAUTHORIZED: (value) => value === '0',
@@ -256,6 +264,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
     if (mount.source === '/var/run/docker.sock') {
       findings.push(
         finding('CRG004', `${serviceName} bind-mounts /var/run/docker.sock`, filePath, lineFor(text, 'docker.sock'))
+      );
+      continue;
+    }
+    if (isContainerRuntimeSocket(mount.source)) {
+      findings.push(
+        finding(
+          'CRG020',
+          `${serviceName} bind-mounts container runtime socket ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
       );
       continue;
     }
@@ -610,6 +629,10 @@ function isSensitiveHostPath(source) {
 
 function isSensitiveDevice(source) {
   return sensitiveDevices.some((candidate) => source === candidate || source.startsWith(`${candidate}/`));
+}
+
+function isContainerRuntimeSocket(source) {
+  return containerRuntimeSockets.includes(source);
 }
 
 function isSubpath(rootDir, targetPath) {

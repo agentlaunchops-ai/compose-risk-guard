@@ -24,6 +24,7 @@ It checks for:
 - high-risk kernel and networking settings in `sysctls`
 - disabled container healthchecks
 - disabled container logging
+- container runtime socket bind mounts
 
 ## Install
 
@@ -93,6 +94,7 @@ jobs:
 | `CRG017` | Service sets a high-risk kernel sysctl |
 | `CRG018` | Service disables its container healthcheck |
 | `CRG019` | Service disables container logging |
+| `CRG020` | Service bind-mounts a container runtime socket |
 
 ## License
 
