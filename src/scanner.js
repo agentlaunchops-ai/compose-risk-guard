@@ -31,7 +31,8 @@ export const rules = {
   CRG026: 'Service points Docker clients at an insecure TCP daemon',
   CRG027: 'Service build context escapes the scanned project',
   CRG028: 'Service env_file escapes the scanned project',
-  CRG029: 'Compose secret file escapes the scanned project'
+  CRG029: 'Compose secret file escapes the scanned project',
+  CRG030: 'Service bind-mounts host Docker client credentials'
 };
 
 const composeNames = new Set([
@@ -347,6 +348,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isDockerClientConfigPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG030',
+          `${serviceName} bind-mounts host Docker client credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (mount.type === 'bind' && isSensitiveHostPath(mount.source)) {
       findings.push(
         finding('CRG006', `${serviceName} bind-mounts sensitive host path ${mount.source}`, filePath, lineFor(text, mount.source))
@@ -410,7 +422,9 @@ function normalizeVolumes(value) {
   return value.flatMap((item) => {
     if (typeof item === 'string') {
       const [source, target, mode = ''] = item.split(':');
-      if (!target || (!source.startsWith('/') && !isSshAgentSocket(source))) return [];
+      if (!target || (!source.startsWith('/') && !isSshAgentSocket(source) && !isDockerClientConfigPath(source))) {
+        return [];
+      }
       return [{ type: 'bind', source, target, mode }];
     }
     if (item && typeof item === 'object') {
@@ -805,6 +819,22 @@ function isSshAgentSocket(source) {
     sshAgentSockets.includes(normalized) ||
     /^\/tmp\/ssh-[^/]+\/agent\.\d+$/.test(normalized) ||
     /^\/run\/user\/\d+\/keyring\/ssh$/.test(normalized)
+  );
+}
+
+function isDockerClientConfigPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  return (
+    normalized === '~/.docker' ||
+    normalized.startsWith('~/.docker/') ||
+    normalized === '$HOME/.docker' ||
+    normalized.startsWith('$HOME/.docker/') ||
+    normalized === '${HOME}/.docker' ||
+    normalized.startsWith('${HOME}/.docker/') ||
+    /^\/home\/[^/]+\/\.docker(\/|$)/.test(normalized) ||
+    /^\/root\/\.docker(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/\.docker(\/|$)/.test(normalized)
   );
 }
 

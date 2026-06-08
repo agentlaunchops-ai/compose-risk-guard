@@ -34,6 +34,7 @@ It checks for:
 - build contexts that escape the scanned project
 - env files that escape the scanned project
 - secret files that escape the scanned project
+- host Docker client credential directories or files bind-mounted into services
 
 ## Install
 
@@ -113,6 +114,7 @@ jobs:
 | `CRG027` | Service build context escapes the scanned project |
 | `CRG028` | Service `env_file` escapes the scanned project |
 | `CRG029` | Compose secret `file` escapes the scanned project |
+| `CRG030` | Service bind-mounts host Docker client credentials |
 
 ## License
 

@@ -270,6 +270,39 @@ services:
   assert(findings.some((finding) => finding.message.includes('/run/host-services/ssh-auth.sock')));
 });
 
+test('host Docker client credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  builder:
+    image: builder:1.0.0
+    volumes:
+      - \${HOME}/.docker/config.json:/root/.docker/config.json:ro
+      - /tmp/cache:/cache
+  desktop:
+    image: desktop:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.docker
+        target: /host-docker
+  linux:
+    image: linux:1.0.0
+    volumes:
+      - /home/alice/.docker/config.json:/tmp/config.json:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG030', 'CRG030', 'CRG030']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.docker/config.json')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.docker')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.docker/config.json')));
+});
+
 test('high-risk added Linux capabilities are reported', () => {
   const dir = fixture({
     'compose.yml': `

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG030` to flag host Docker client credential files or directories
+  bind-mounted into Compose services.
 - Add `CRG029` to flag Compose secret `file` references that escape the scanned
   project.
 - Add `CRG028` to flag service `env_file` references that escape the scanned
