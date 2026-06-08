@@ -44,7 +44,8 @@ export const rules = {
   CRG039: 'Service bind-mounts host shell or REPL history files',
   CRG040: 'Service bind-mounts host password store or PGP secrets',
   CRG041: 'Service bind-mounts Terraform or OpenTofu state or credentials',
-  CRG042: 'Service bind-mounts SOPS or age secret-management keys'
+  CRG042: 'Service bind-mounts SOPS or age secret-management keys',
+  CRG043: 'Service bind-mounts cryptocurrency wallet or chain keys'
 };
 
 const composeNames = new Set([
@@ -490,6 +491,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isCryptoWalletKeyPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG043',
+          `${serviceName} bind-mounts cryptocurrency wallet or chain keys from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -580,6 +592,7 @@ function normalizeVolumes(value) {
           !isPasswordStorePath(source) &&
           !isTerraformStateOrCredentialPath(source) &&
           !isSecretManagementKeyPath(source) &&
+          !isCryptoWalletKeyPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1170,6 +1183,28 @@ function isSecretManagementKeyPath(source) {
     '.sops/age/keys.txt'
   ];
   const keyPattern = /(\.age-key\.txt|\.config\/age\/keys\.txt|\.config\/sops\/age\/keys\.txt|\.sops\/age\/keys\.txt)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isCryptoWalletKeyPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.bitcoin/wallet.dat',
+    '.config/solana/id.json',
+    '.ethereum/keystore',
+    '.foundry/keystores',
+    '.near-credentials'
+  ];
+  const keyPattern = /(\.bitcoin\/wallet\.dat|\.config\/solana\/id\.json|\.ethereum\/keystore|\.foundry\/keystores|\.near-credentials)(\/|$)/;
   return (
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))

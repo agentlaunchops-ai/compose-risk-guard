@@ -657,6 +657,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.sops/age/keys.txt')));
 });
 
+test('cryptocurrency wallet and chain key bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  bitcoin:
+    image: bitcoin:28
+    volumes:
+      - \${HOME}/.bitcoin/wallet.dat:/wallet.dat:ro
+      - /tmp/cache:/cache
+  solana:
+    image: solana:1.18
+    volumes:
+      - /home/alice/.config/solana/id.json:/root/.config/solana/id.json:ro
+  ethereum:
+    image: geth:1.15
+    volumes:
+      - type: bind
+        source: /Users/alice/.ethereum/keystore
+        target: /root/.ethereum/keystore
+  foundry:
+    image: ghcr.io/foundry-rs/foundry:stable
+    volumes:
+      - ~/.foundry/keystores:/root/.foundry/keystores:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG043', 'CRG043', 'CRG043', 'CRG043']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.bitcoin/wallet.dat')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/solana/id.json')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.ethereum/keystore')));
+  assert(findings.some((finding) => finding.message.includes('~/.foundry/keystores')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

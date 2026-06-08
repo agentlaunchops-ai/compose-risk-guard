@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG043` to flag cryptocurrency wallet and chain keys bind-mounted into
+  Compose services.
 - Add `CRG042` to flag SOPS and age secret-management keys bind-mounted into
   Compose services.
 - Add `CRG041` to flag Terraform and OpenTofu state or credential files
