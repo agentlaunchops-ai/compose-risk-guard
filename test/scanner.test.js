@@ -252,6 +252,38 @@ services:
   assert(findings.some((finding) => finding.message.includes('AWS_SSL_VERIFY')));
 });
 
+test('high-risk sysctls are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  router:
+    image: router:1.0.0
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - kernel.kptr_restrict=2
+  bpf:
+    image: bpf:1.0.0
+    sysctls:
+      kernel.unprivileged_bpf_disabled: "0"
+      kernel.dmesg_restrict: "0"
+  safe:
+    image: safe:1.0.0
+    sysctls:
+      net.core.somaxconn: "1024"
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG017', 'CRG017', 'CRG017']
+  );
+  assert(findings.some((finding) => finding.message.includes('net.ipv4.ip_forward')));
+  assert(findings.some((finding) => finding.message.includes('kernel.unprivileged_bpf_disabled')));
+  assert(findings.some((finding) => finding.message.includes('kernel.dmesg_restrict')));
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

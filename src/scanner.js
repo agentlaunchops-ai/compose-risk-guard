@@ -18,7 +18,8 @@ export const rules = {
   CRG013: 'Service shares an additional host namespace',
   CRG014: 'Service maps a sensitive host device',
   CRG015: 'Service maps a hostname to the Docker host gateway',
-  CRG016: 'Service disables TLS certificate verification'
+  CRG016: 'Service disables TLS certificate verification',
+  CRG017: 'Service sets a high-risk kernel sysctl'
 };
 
 const composeNames = new Set([
@@ -79,6 +80,16 @@ const insecureTlsEnv = {
   CURL_SSL_NO_VERIFY: isTruthyString,
   AWS_SSL_VERIFY: isFalseyString
 };
+const riskySysctls = {
+  'net.ipv4.ip_forward': isTruthyString,
+  'net.ipv4.conf.all.forwarding': isTruthyString,
+  'net.ipv4.conf.default.forwarding': isTruthyString,
+  'net.ipv4.conf.all.route_localnet': isTruthyString,
+  'net.ipv4.conf.default.route_localnet': isTruthyString,
+  'kernel.unprivileged_bpf_disabled': (value) => value === '0',
+  'kernel.kptr_restrict': (value) => value === '0',
+  'kernel.dmesg_restrict': (value) => value === '0'
+};
 
 export function discoverComposeFiles(rootDir) {
   const found = [];
@@ -135,6 +146,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanUser(service, serviceName, filePath, text));
     findings.push(...scanDevices(service, serviceName, filePath, text));
     findings.push(...scanExtraHosts(service, serviceName, filePath, text));
+    findings.push(...scanSysctls(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -403,6 +415,19 @@ function scanExtraHosts(service, serviceName, filePath, text) {
     );
 }
 
+function scanSysctls(service, serviceName, filePath, text) {
+  return normalizeSysctls(service.sysctls)
+    .filter((entry) => isRiskySysctl(entry.key, entry.value))
+    .map((entry) =>
+      finding(
+        'CRG017',
+        `${serviceName} sets high-risk sysctl ${entry.key}=${entry.value}`,
+        filePath,
+        lineFor(text, entry.raw)
+      )
+    );
+}
+
 function normalizeDevices(value) {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
@@ -433,6 +458,27 @@ function normalizeExtraHosts(value) {
       host,
       address: String(address).trim(),
       raw: String(host)
+    }));
+  }
+  return [];
+}
+
+function normalizeSysctls(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      if (typeof item !== 'string') return [];
+      const [key, ...rest] = item.split('=');
+      const value = rest.join('=');
+      if (!key || !value) return [];
+      return [{ key: key.trim(), value: value.trim().toLowerCase(), raw: item }];
+    });
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).map(([key, value]) => ({
+      key: String(key).trim(),
+      value: String(value).trim().toLowerCase(),
+      raw: String(key)
     }));
   }
   return [];
@@ -510,6 +556,13 @@ function isInsecureTlsEnv(key, value) {
   const normalizedKey = String(key || '').trim().toUpperCase();
   const normalizedValue = String(value ?? '').trim().toLowerCase();
   const check = insecureTlsEnv[normalizedKey];
+  return Boolean(check && check(normalizedValue));
+}
+
+function isRiskySysctl(key, value) {
+  const normalizedKey = String(key || '').trim().toLowerCase();
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+  const check = riskySysctls[normalizedKey];
   return Boolean(check && check(normalizedValue));
 }
 
