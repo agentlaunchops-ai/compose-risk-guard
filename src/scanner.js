@@ -55,7 +55,8 @@ export const rules = {
   CRG050: 'Service bind-mounts host deployment platform credentials',
   CRG051: 'Service bind-mounts host observability tool credentials',
   CRG052: 'Service bind-mounts host payment processor credentials',
-  CRG053: 'Service bind-mounts host collaboration app credentials'
+  CRG053: 'Service bind-mounts host collaboration app credentials',
+  CRG054: 'Service bind-mounts host email client credentials'
 };
 
 const composeNames = new Set([
@@ -622,6 +623,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isEmailClientCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG054',
+          `${serviceName} bind-mounts host email client credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -723,6 +735,7 @@ function normalizeVolumes(value) {
           !isObservabilityCredentialPath(source) &&
           !isPaymentProcessorCredentialPath(source) &&
           !isCollaborationAppCredentialPath(source) &&
+          !isEmailClientCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1599,6 +1612,34 @@ function isCollaborationAppCredentialPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Slack|discord|Microsoft\/Teams|zoom\.us)(\/|$)/.test(normalized)
+  );
+}
+
+function isEmailClientCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.thunderbird',
+    '.config/aerc',
+    '.config/neomutt',
+    '.mutt',
+    '.msmtprc',
+    '.mbsyncrc',
+    '.offlineimaprc',
+    'Library/Mail',
+    'Library/Accounts',
+    'Library/Thunderbird'
+  ];
+  const keyPattern = /(\.thunderbird|\.config\/(aerc|neomutt)|\.mutt|\.msmtprc|\.mbsyncrc|\.offlineimaprc)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/(Mail|Accounts|Thunderbird)(\/|$)/.test(normalized)
   );
 }
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG054` to flag email client credentials bind-mounted into Compose
+  services.
 - Add `CRG053` to flag collaboration app credentials bind-mounted into Compose
   services.
 - Add `CRG052` to flag payment processor credentials bind-mounted into

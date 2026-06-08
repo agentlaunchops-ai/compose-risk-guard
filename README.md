@@ -56,6 +56,7 @@ It checks for:
 - host observability tool credentials bind-mounted into services
 - host payment processor credentials bind-mounted into services
 - host collaboration app credentials bind-mounted into services
+- host email client credentials bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -161,6 +162,7 @@ jobs:
 | `CRG051` | Service bind-mounts host observability tool credentials |
 | `CRG052` | Service bind-mounts host payment processor credentials |
 | `CRG053` | Service bind-mounts host collaboration app credentials |
+| `CRG054` | Service bind-mounts host email client credentials |
 
 ## License
 

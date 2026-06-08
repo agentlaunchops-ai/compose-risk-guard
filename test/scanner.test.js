@@ -1095,6 +1095,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.config/zoom')));
 });
 
+test('host email client credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  thunderbird:
+    image: node:20
+    volumes:
+      - \${HOME}/.thunderbird:/profiles/thunderbird:ro
+      - /tmp/cache:/cache
+  aerc:
+    image: node:20
+    volumes:
+      - /home/alice/.config/aerc:/root/.config/aerc:ro
+  apple-mail:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Mail
+        target: /host-mail
+  mutt:
+    image: node:20
+    volumes:
+      - ~/.mutt:/root/.mutt:ro
+  msmtp:
+    image: node:20
+    volumes:
+      - /root/.msmtprc:/root/.msmtprc:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG054', 'CRG054', 'CRG054', 'CRG054', 'CRG054']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.thunderbird')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/aerc')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Mail')));
+  assert(findings.some((finding) => finding.message.includes('~/.mutt')));
+  assert(findings.some((finding) => finding.message.includes('/root/.msmtprc')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
