@@ -64,6 +64,33 @@ services:
   assert.equal(path.basename(findings[0].filePath), 'database.env');
 });
 
+test('env files outside the scanned project are reported without reading them', () => {
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-risk-guard-outside-'));
+  fs.writeFileSync(path.join(outsideDir, 'prod.env'), 'API_TOKEN=outside-secret\n');
+
+  const dir = fixture({
+    'services/compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    env_file:
+      - ${path.join(outsideDir, 'prod.env')}
+      - \${COMPOSE_ENV_FILE}
+  worker:
+    image: worker:1.0.0
+    env_file:
+      - ../worker.env
+`,
+    'worker.env': 'VISIBLE=true\n'
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, 'CRG028');
+  assert.match(findings[0].message, /api/);
+  assert.match(findings[0].message, /prod\.env/);
+});
+
 test('literal secret build args are reported', () => {
   const dir = fixture({
     'compose.yml': `

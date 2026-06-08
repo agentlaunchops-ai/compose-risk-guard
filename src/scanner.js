@@ -29,7 +29,8 @@ export const rules = {
   CRG024: 'Service explicitly disables a read-only root filesystem',
   CRG025: 'Service label contains a secret-like literal',
   CRG026: 'Service points Docker clients at an insecure TCP daemon',
-  CRG027: 'Service build context escapes the scanned project'
+  CRG027: 'Service build context escapes the scanned project',
+  CRG028: 'Service env_file escapes the scanned project'
 };
 
 const composeNames = new Set([
@@ -158,7 +159,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
   for (const [serviceName, service] of Object.entries(services)) {
     if (!service || typeof service !== 'object') continue;
     findings.push(...scanEnvironment(service, serviceName, filePath, text));
-    findings.push(...scanEnvFiles(service, serviceName, filePath, rootDir));
+    findings.push(...scanEnvFiles(service, serviceName, filePath, rootDir, text));
     findings.push(...scanHostAccess(service, serviceName, filePath, text));
     findings.push(...scanImage(service, serviceName, filePath, text));
     findings.push(...scanBuildContext(service, serviceName, filePath, rootDir, text));
@@ -218,12 +219,24 @@ function scanEnvironment(service, serviceName, filePath, text) {
   });
 }
 
-function scanEnvFiles(service, serviceName, composePath, rootDir) {
+function scanEnvFiles(service, serviceName, composePath, rootDir, text) {
   const refs = normalizeEnvFiles(service.env_file);
   const findings = [];
   for (const ref of refs) {
+    if (substitutionPattern.test(ref)) continue;
     const envPath = path.resolve(path.dirname(composePath), ref);
-    if (!isSubpath(rootDir, envPath) || !fs.existsSync(envPath)) continue;
+    if (!isSubpath(rootDir, envPath)) {
+      findings.push(
+        finding(
+          'CRG028',
+          `${serviceName} references env_file ${ref} outside the scanned project`,
+          composePath,
+          lineFor(text, ref)
+        )
+      );
+      continue;
+    }
+    if (!fs.existsSync(envPath)) continue;
     const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
     lines.forEach((line, index) => {
       const trimmed = line.trim();
