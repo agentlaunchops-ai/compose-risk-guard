@@ -37,7 +37,8 @@ export const rules = {
   CRG032: 'Service bind-mounts host Kubernetes credentials',
   CRG033: 'Service bind-mounts host package manager credentials',
   CRG034: 'Service bind-mounts host Git or SSH credentials',
-  CRG035: 'Service joins another container namespace'
+  CRG035: 'Service joins another container namespace',
+  CRG036: 'Compose config file escapes the scanned project'
 };
 
 const composeNames = new Set([
@@ -164,6 +165,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
   const services = doc.services && typeof doc.services === 'object' ? doc.services : {};
   const findings = [];
   findings.push(...scanSecretFiles(doc, filePath, rootDir, text));
+  findings.push(...scanConfigFiles(doc, filePath, rootDir, text));
   for (const [serviceName, service] of Object.entries(services)) {
     if (!service || typeof service !== 'object') continue;
     findings.push(...scanEnvironment(service, serviceName, filePath, text));
@@ -198,6 +200,25 @@ function scanSecretFiles(doc, filePath, rootDir, text) {
       finding(
         'CRG029',
         `secret ${secretName} reads file ${ref} outside the scanned project`,
+        filePath,
+        lineFor(text, ref)
+      )
+    ];
+  });
+}
+
+function scanConfigFiles(doc, filePath, rootDir, text) {
+  const configs = doc.configs && typeof doc.configs === 'object' ? doc.configs : {};
+  return Object.entries(configs).flatMap(([configName, config]) => {
+    if (!config || typeof config !== 'object' || typeof config.file !== 'string') return [];
+    const ref = config.file.trim();
+    if (!ref || substitutionPattern.test(ref)) return [];
+    const configPath = path.resolve(path.dirname(filePath), ref);
+    if (isSubpath(rootDir, configPath)) return [];
+    return [
+      finding(
+        'CRG036',
+        `config ${configName} reads file ${ref} outside the scanned project`,
         filePath,
         lineFor(text, ref)
       )

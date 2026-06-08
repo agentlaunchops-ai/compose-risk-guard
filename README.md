@@ -34,6 +34,7 @@ It checks for:
 - build contexts that escape the scanned project
 - env files that escape the scanned project
 - secret files that escape the scanned project
+- config files that escape the scanned project
 - host Docker client credential directories or files bind-mounted into services
 - host cloud provider credential directories or files bind-mounted into services
 - host Kubernetes credential directories or files bind-mounted into services
@@ -125,6 +126,7 @@ jobs:
 | `CRG033` | Service bind-mounts host package manager credentials |
 | `CRG034` | Service bind-mounts host Git or SSH credentials |
 | `CRG035` | Service joins another container namespace |
+| `CRG036` | Compose config `file` escapes the scanned project |
 
 ## License
 

@@ -122,6 +122,36 @@ secrets:
   assert.match(findings[0].message, /prod\.key/);
 });
 
+test('config files outside the scanned project are reported', () => {
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compose-risk-guard-configs-'));
+  fs.writeFileSync(path.join(outsideDir, 'nginx.conf'), 'server {}\n');
+
+  const dir = fixture({
+    'compose/compose.yml': `
+services:
+  web:
+    image: nginx:1.27
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/conf.d/default.conf
+configs:
+  nginx_conf:
+    file: ${path.join(outsideDir, 'nginx.conf')}
+  local_conf:
+    file: ../local.conf
+  env_conf:
+    file: \${COMPOSE_CONFIG_FILE}
+`,
+    'local.conf': 'server {}\n'
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, 'CRG036');
+  assert.match(findings[0].message, /nginx_conf/);
+  assert.match(findings[0].message, /nginx\.conf/);
+});
+
 test('literal secret build args are reported', () => {
   const dir = fixture({
     'compose.yml': `

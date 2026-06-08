@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG036` to flag Compose config `file` references that escape the scanned
+  project.
 - Add `CRG035` to flag services that join another container's network, PID, or
   IPC namespace.
 - Add `CRG034` to flag host Git and SSH credential files or directories
