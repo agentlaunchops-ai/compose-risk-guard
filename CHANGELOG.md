@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG063` to flag host terminal emulator state bind-mounted into Compose
+  services.
 - Add `CRG062` to flag host editor or IDE state bind-mounted into Compose
   services.
 - Add `CRG061` to flag shell startup files bind-mounted into Compose services.

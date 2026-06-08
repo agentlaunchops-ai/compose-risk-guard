@@ -1472,6 +1472,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.config/zed')));
 });
 
+test('host terminal emulator state bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  kitty:
+    image: node:20
+    volumes:
+      - \${HOME}/.config/kitty:/root/.config/kitty:ro
+      - /tmp/cache:/cache
+  wezterm:
+    image: node:20
+    volumes:
+      - /home/alice/.config/wezterm:/root/.config/wezterm:ro
+  iterm:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/iTerm2
+        target: /host-iterm
+  ghostty:
+    image: node:20
+    volumes:
+      - ~/.config/ghostty:/root/.config/ghostty:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG063', 'CRG063', 'CRG063', 'CRG063']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/kitty')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/wezterm')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/iTerm2')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/ghostty')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

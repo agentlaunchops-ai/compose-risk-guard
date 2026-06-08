@@ -64,7 +64,8 @@ export const rules = {
   CRG059: 'Service bind-mounts host certificate authority or TLS private key material',
   CRG060: 'Service bind-mounts host secret manager credentials',
   CRG061: 'Service bind-mounts host shell startup files',
-  CRG062: 'Service bind-mounts host editor or IDE state'
+  CRG062: 'Service bind-mounts host editor or IDE state',
+  CRG063: 'Service bind-mounts host terminal emulator state'
 };
 
 const composeNames = new Set([
@@ -730,6 +731,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isTerminalEmulatorStatePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG063',
+          `${serviceName} bind-mounts host terminal emulator state from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -840,6 +852,7 @@ function normalizeVolumes(value) {
           !isSecretManagerCredentialPath(source) &&
           !isShellStartupPath(source) &&
           !isEditorOrIdeStatePath(source) &&
+          !isTerminalEmulatorStatePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1963,6 +1976,33 @@ function isEditorOrIdeStatePath(source) {
     /^\/root\/(\.vscode|\.config\/(Code|VSCodium|JetBrains|zed))(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/(\.vscode|\.config\/(Code|VSCodium|JetBrains|zed))(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Code|VSCodium|JetBrains|Zed)(\/|$)/.test(normalized)
+  );
+}
+
+function isTerminalEmulatorStatePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/alacritty',
+    '.config/ghostty',
+    '.config/kitty',
+    '.config/terminator',
+    '.config/wezterm',
+    '.warp',
+    'Library/Application Support/com.mitchellh.ghostty',
+    'Library/Application Support/iTerm2',
+    'Library/Application Support/Warp'
+  ];
+  const keyPattern = /(\.config\/(alacritty|ghostty|kitty|terminator|wezterm)|\.warp)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(com\.mitchellh\.ghostty|iTerm2|Warp)(\/|$)/.test(normalized)
   );
 }
 
