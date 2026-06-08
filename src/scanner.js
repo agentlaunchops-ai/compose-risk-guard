@@ -12,7 +12,8 @@ export const rules = {
   CRG007: 'Service image uses latest or has no explicit tag/digest',
   CRG008: 'Secret-like build argument has a literal value',
   CRG009: 'Service adds a high-risk Linux capability',
-  CRG010: 'Service disables a container security profile'
+  CRG010: 'Service disables a container security profile',
+  CRG011: 'Service publishes a sensitive port on all interfaces'
 };
 
 const composeNames = new Set([
@@ -40,6 +41,23 @@ const riskyCapabilities = new Set([
   'NET_ADMIN',
   'DAC_READ_SEARCH',
   'DAC_OVERRIDE'
+]);
+const sensitivePorts = new Set([
+  11211, // Memcached
+  2181, // ZooKeeper
+  2375, // Docker API
+  3306, // MySQL
+  5432, // PostgreSQL
+  5601, // Kibana
+  5672, // RabbitMQ
+  5984, // CouchDB
+  6379, // Redis
+  8086, // InfluxDB
+  9092, // Kafka
+  9200, // Elasticsearch
+  9300, // Elasticsearch transport
+  15672, // RabbitMQ management
+  27017 // MongoDB
 ]);
 
 export function discoverComposeFiles(rootDir) {
@@ -93,6 +111,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanImage(service, serviceName, filePath, text));
     findings.push(...scanBuildArgs(service, serviceName, filePath, text));
     findings.push(...scanSecurityOptions(service, serviceName, filePath, text));
+    findings.push(...scanPublishedPorts(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -275,6 +294,48 @@ function scanSecurityOptions(service, serviceName, filePath, text) {
   );
 }
 
+function scanPublishedPorts(service, serviceName, filePath, text) {
+  return normalizePorts(service.ports)
+    .filter((port) => sensitivePorts.has(port.target) && isPublicHostIp(port.hostIp))
+    .map((port) =>
+      finding(
+        'CRG011',
+        `${serviceName} publishes sensitive port ${port.target} on all interfaces`,
+        filePath,
+        lineFor(text, port.raw)
+      )
+    );
+}
+
+function normalizePorts(value) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === 'number') return [{ target: item, hostIp: '', raw: String(item) }];
+    if (typeof item === 'string') return parsePortString(item);
+    if (!item || typeof item !== 'object') return [];
+    const target = Number(item.target);
+    if (!Number.isInteger(target)) return [];
+    return [
+      {
+        target,
+        hostIp: String(item.host_ip || item.hostIp || ''),
+        raw: String(item.target)
+      }
+    ];
+  });
+}
+
+function parsePortString(item) {
+  const raw = item;
+  const value = item.trim().replace(/\/(tcp|udp|sctp)$/i, '');
+  if (!value) return [];
+  const parts = value.split(':');
+  const target = Number(parts.at(-1));
+  if (!Number.isInteger(target)) return [];
+  const hostIp = parts.length >= 3 ? parts.slice(0, -2).join(':').replace(/^\[|\]$/g, '') : '';
+  return [{ target, hostIp, raw }];
+}
+
 function normalizeSecurityOptions(value) {
   if (typeof value === 'string') return [value];
   if (Array.isArray(value)) return value.filter((item) => typeof item === 'string');
@@ -289,6 +350,11 @@ function isDisabledSecurityOption(option) {
     normalized === 'apparmor:unconfined' ||
     normalized === 'label:disable'
   );
+}
+
+function isPublicHostIp(hostIp) {
+  const normalized = String(hostIp || '').trim().toLowerCase();
+  return normalized === '' || normalized === '0.0.0.0' || normalized === '::' || normalized === '[::]';
 }
 
 function isSecretLiteral(key, value) {

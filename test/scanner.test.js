@@ -164,6 +164,38 @@ services:
   assert(findings.some((finding) => finding.message.includes('label:disable')));
 });
 
+test('sensitive ports published on all interfaces are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+      - "127.0.0.1:6379:6379"
+  cache:
+    image: redis:7
+    ports:
+      - target: 6379
+        published: "6379"
+        host_ip: 0.0.0.0
+  web:
+    image: nginx:1.27
+    ports:
+      - "8080:80"
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG011', 'CRG011']
+  );
+  assert(findings.some((finding) => finding.message.includes('5432')));
+  assert(findings.some((finding) => finding.message.includes('6379')));
+});
+
 test('images without explicit non-latest tag or digest are reported', () => {
   const dir = fixture({
     'compose.yml': `
