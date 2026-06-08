@@ -28,7 +28,8 @@ export const rules = {
   CRG023: 'Service joins another service namespace',
   CRG024: 'Service explicitly disables a read-only root filesystem',
   CRG025: 'Service label contains a secret-like literal',
-  CRG026: 'Service points Docker clients at an insecure TCP daemon'
+  CRG026: 'Service points Docker clients at an insecure TCP daemon',
+  CRG027: 'Service build context escapes the scanned project'
 };
 
 const composeNames = new Set([
@@ -160,6 +161,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanEnvFiles(service, serviceName, filePath, rootDir));
     findings.push(...scanHostAccess(service, serviceName, filePath, text));
     findings.push(...scanImage(service, serviceName, filePath, text));
+    findings.push(...scanBuildContext(service, serviceName, filePath, rootDir, text));
     findings.push(...scanBuildArgs(service, serviceName, filePath, text));
     findings.push(...scanSecurityOptions(service, serviceName, filePath, text));
     findings.push(...scanPublishedPorts(service, serviceName, filePath, text));
@@ -423,6 +425,31 @@ function scanBuildArgs(service, serviceName, filePath, text) {
       )
     ];
   });
+}
+
+function scanBuildContext(service, serviceName, filePath, rootDir, text) {
+  const context = buildContext(service.build);
+  if (!context || isRemoteBuildContext(context) || substitutionPattern.test(context)) return [];
+  const resolved = path.resolve(path.dirname(filePath), context);
+  if (isSubpath(rootDir, resolved)) return [];
+  return [
+    finding(
+      'CRG027',
+      `${serviceName} build context ${context} is outside the scanned project`,
+      filePath,
+      lineFor(text, 'context:')
+    )
+  ];
+}
+
+function buildContext(value) {
+  if (typeof value === 'string') return value.trim();
+  if (value && typeof value === 'object' && typeof value.context === 'string') return value.context.trim();
+  return '';
+}
+
+function isRemoteBuildContext(value) {
+  return /^(https?:\/\/|git@|ssh:\/\/)/i.test(value);
 }
 
 function scanSecurityOptions(service, serviceName, filePath, text) {
@@ -749,7 +776,7 @@ function isSshAgentSocket(source) {
 
 function isSubpath(rootDir, targetPath) {
   const relative = path.relative(path.resolve(rootDir), path.resolve(targetPath));
-  return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 function lineFor(text, needle) {

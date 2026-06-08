@@ -95,6 +95,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('PRIVATE_KEY')));
 });
 
+test('build contexts outside the scanned project are reported', () => {
+  const dir = fixture({
+    'services/compose.yml': `
+services:
+  broad:
+    image: broad:1.0.0
+    build:
+      context: ../..
+  remote:
+    image: remote:1.0.0
+    build: https://github.com/example/app.git
+  local:
+    image: local:1.0.0
+    build:
+      context: .
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, 'CRG027');
+  assert.match(findings[0].message, /broad/);
+});
+
+test('build contexts inside the scanned project are allowed from subdirectories', () => {
+  const dir = fixture({
+    'compose/compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    build:
+      context: ..
+`
+  });
+
+  assert.deepEqual(scanProject(dir), []);
+});
+
 test('host access risks are reported', () => {
   const dir = fixture({
     'compose.yaml': `

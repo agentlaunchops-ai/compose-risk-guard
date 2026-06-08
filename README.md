@@ -31,6 +31,7 @@ It checks for:
 - services explicitly disabling a read-only root filesystem
 - secret-looking service labels with literal values
 - Docker clients pointed at insecure TCP daemons
+- build contexts that escape the scanned project
 
 ## Install
 
@@ -107,6 +108,7 @@ jobs:
 | `CRG024` | Service explicitly disables a read-only root filesystem |
 | `CRG025` | Service label contains a secret-like literal |
 | `CRG026` | Service points Docker clients at an insecure TCP daemon |
+| `CRG027` | Service build context escapes the scanned project |
 
 ## License
 
