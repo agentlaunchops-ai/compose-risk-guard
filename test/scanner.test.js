@@ -923,6 +923,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.config/zerotier')));
 });
 
+test('host deployment platform credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  vercel:
+    image: node:20
+    volumes:
+      - \${HOME}/.vercel:/root/.vercel:ro
+      - /tmp/cache:/cache
+  netlify:
+    image: node:20
+    volumes:
+      - /home/alice/.netlify:/root/.netlify:ro
+  render:
+    image: render:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.render
+        target: /root/.render
+  fly:
+    image: flyio/flyctl:0.3.152
+    volumes:
+      - ~/.config/fly:/root/.fly:ro
+  railway:
+    image: railway:1.0.0
+    volumes:
+      - /root/.railway:/root/.railway:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG050', 'CRG050', 'CRG050', 'CRG050', 'CRG050']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.vercel')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.netlify')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.render')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/fly')));
+  assert(findings.some((finding) => finding.message.includes('/root/.railway')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

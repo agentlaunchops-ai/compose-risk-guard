@@ -51,7 +51,8 @@ export const rules = {
   CRG046: 'Service bind-mounts host database client credentials',
   CRG047: 'Service bind-mounts host backup or sync credentials',
   CRG048: 'Service bind-mounts host container registry credentials or certificates',
-  CRG049: 'Service bind-mounts host tunnel or proxy credentials'
+  CRG049: 'Service bind-mounts host tunnel or proxy credentials',
+  CRG050: 'Service bind-mounts host deployment platform credentials'
 };
 
 const composeNames = new Set([
@@ -574,6 +575,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isDeploymentPlatformCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG050',
+          `${serviceName} bind-mounts host deployment platform credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -671,6 +683,7 @@ function normalizeVolumes(value) {
           !isBackupOrSyncCredentialPath(source) &&
           !isContainerRegistryCredentialPath(source) &&
           !isTunnelOrProxyCredentialPath(source) &&
+          !isDeploymentPlatformCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1442,6 +1455,30 @@ function isTunnelOrProxyCredentialPath(source) {
     normalized.startsWith('/var/lib/tailscale/') ||
     normalized === '/var/lib/zerotier-one' ||
     normalized.startsWith('/var/lib/zerotier-one/') ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isDeploymentPlatformCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.vercel',
+    '.netlify',
+    '.render',
+    '.fly',
+    '.config/fly',
+    '.railway',
+    '.config/railway'
+  ];
+  const keyPattern = /(\.vercel|\.netlify|\.render|\.fly|\.config\/fly|\.railway|\.config\/railway)(\/|$)/;
+  return (
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
     ) ||

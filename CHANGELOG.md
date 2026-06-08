@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG050` to flag deployment platform credentials bind-mounted into
+  Compose services.
 - Add `CRG049` to flag tunnel and proxy credentials bind-mounted into Compose
   services.
 - Add `CRG048` to flag host container registry credentials and certificate
