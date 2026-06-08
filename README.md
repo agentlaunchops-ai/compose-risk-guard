@@ -23,6 +23,7 @@ It checks for:
 - TLS certificate verification bypasses in service environment values
 - high-risk kernel and networking settings in `sysctls`
 - disabled container healthchecks
+- disabled container logging
 
 ## Install
 
@@ -91,6 +92,7 @@ jobs:
 | `CRG016` | Service disables TLS certificate verification |
 | `CRG017` | Service sets a high-risk kernel sysctl |
 | `CRG018` | Service disables its container healthcheck |
+| `CRG019` | Service disables container logging |
 
 ## License
 

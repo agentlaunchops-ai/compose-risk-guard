@@ -20,7 +20,8 @@ export const rules = {
   CRG015: 'Service maps a hostname to the Docker host gateway',
   CRG016: 'Service disables TLS certificate verification',
   CRG017: 'Service sets a high-risk kernel sysctl',
-  CRG018: 'Service disables its container healthcheck'
+  CRG018: 'Service disables its container healthcheck',
+  CRG019: 'Service disables container logging'
 };
 
 const composeNames = new Set([
@@ -149,6 +150,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanExtraHosts(service, serviceName, filePath, text));
     findings.push(...scanSysctls(service, serviceName, filePath, text));
     findings.push(...scanHealthcheck(service, serviceName, filePath, text));
+    findings.push(...scanLogging(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -439,6 +441,19 @@ function scanHealthcheck(service, serviceName, filePath, text) {
       `${serviceName} disables its container healthcheck`,
       filePath,
       lineFor(text, 'disable:')
+    )
+  ];
+}
+
+function scanLogging(service, serviceName, filePath, text) {
+  if (!service.logging || typeof service.logging !== 'object') return [];
+  if (String(service.logging.driver || '').trim().toLowerCase() !== 'none') return [];
+  return [
+    finding(
+      'CRG019',
+      `${serviceName} disables container logging with logging.driver: none`,
+      filePath,
+      lineFor(text, 'driver:')
     )
   ];
 }
