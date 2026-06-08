@@ -695,6 +695,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.foundry/keystores')));
 });
 
+test('host AI provider credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  openai:
+    image: node:20
+    volumes:
+      - \${HOME}/.openai:/root/.openai:ro
+      - /tmp/cache:/cache
+  claude:
+    image: node:20
+    volumes:
+      - /home/alice/.claude.json:/root/.claude.json:ro
+  cursor:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/Cursor
+        target: /root/.config/Cursor
+  gemini:
+    image: node:20
+    volumes:
+      - ~/.gemini:/root/.gemini:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG044', 'CRG044', 'CRG044', 'CRG044']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.openai')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.claude.json')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/Cursor')));
+  assert(findings.some((finding) => finding.message.includes('~/.gemini')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

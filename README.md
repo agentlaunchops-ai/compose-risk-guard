@@ -46,6 +46,7 @@ It checks for:
 - Terraform or OpenTofu state or credential files bind-mounted into services
 - SOPS or age secret-management keys bind-mounted into services
 - cryptocurrency wallet or chain keys bind-mounted into services
+- host AI provider credential directories or files bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -141,6 +142,7 @@ jobs:
 | `CRG041` | Service bind-mounts Terraform or OpenTofu state or credentials |
 | `CRG042` | Service bind-mounts SOPS or age secret-management keys |
 | `CRG043` | Service bind-mounts cryptocurrency wallet or chain keys |
+| `CRG044` | Service bind-mounts host AI provider credentials |
 
 ## License
 

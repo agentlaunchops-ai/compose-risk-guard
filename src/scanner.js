@@ -45,7 +45,8 @@ export const rules = {
   CRG040: 'Service bind-mounts host password store or PGP secrets',
   CRG041: 'Service bind-mounts Terraform or OpenTofu state or credentials',
   CRG042: 'Service bind-mounts SOPS or age secret-management keys',
-  CRG043: 'Service bind-mounts cryptocurrency wallet or chain keys'
+  CRG043: 'Service bind-mounts cryptocurrency wallet or chain keys',
+  CRG044: 'Service bind-mounts host AI provider credentials'
 };
 
 const composeNames = new Set([
@@ -502,6 +503,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isAiProviderCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG044',
+          `${serviceName} bind-mounts host AI provider credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -593,6 +605,7 @@ function normalizeVolumes(value) {
           !isTerraformStateOrCredentialPath(source) &&
           !isSecretManagementKeyPath(source) &&
           !isCryptoWalletKeyPath(source) &&
+          !isAiProviderCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1205,6 +1218,35 @@ function isCryptoWalletKeyPath(source) {
     '.near-credentials'
   ];
   const keyPattern = /(\.bitcoin\/wallet\.dat|\.config\/solana\/id\.json|\.ethereum\/keystore|\.foundry\/keystores|\.near-credentials)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isAiProviderCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.anthropic',
+    '.claude',
+    '.claude.json',
+    '.codex',
+    '.cursor',
+    '.gemini',
+    '.openai',
+    '.config/anthropic',
+    '.config/claude',
+    '.config/Cursor',
+    '.config/gemini',
+    '.config/openai'
+  ];
+  const keyPattern = /(\.anthropic|\.claude|\.claude\.json|\.codex|\.cursor|\.gemini|\.openai|\.config\/(anthropic|claude|Cursor|cursor|gemini|openai))(\/|$)/;
   return (
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))

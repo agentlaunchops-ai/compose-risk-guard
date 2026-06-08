@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG044` to flag host AI provider credentials bind-mounted into Compose
+  services.
 - Add `CRG043` to flag cryptocurrency wallet and chain keys bind-mounted into
   Compose services.
 - Add `CRG042` to flag SOPS and age secret-management keys bind-mounted into
