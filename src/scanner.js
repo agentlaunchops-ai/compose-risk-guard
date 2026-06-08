@@ -39,7 +39,8 @@ export const rules = {
   CRG034: 'Service bind-mounts host Git or SSH credentials',
   CRG035: 'Service joins another container namespace',
   CRG036: 'Compose config file escapes the scanned project',
-  CRG037: 'Service bind-mounts host build tool credentials'
+  CRG037: 'Service bind-mounts host build tool credentials',
+  CRG038: 'Service bind-mounts dotenv credential files'
 };
 
 const composeNames = new Set([
@@ -430,6 +431,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isDotenvCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG038',
+          `${serviceName} bind-mounts dotenv credential file ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -515,6 +527,7 @@ function normalizeVolumes(value) {
           !isKubernetesCredentialPath(source) &&
           !isPackageManagerCredentialPath(source) &&
           !isBuildToolCredentialPath(source) &&
+          !isDotenvCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1013,6 +1026,12 @@ function isBuildToolCredentialPath(source) {
     new RegExp(`^/root/${linuxPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${linuxPattern.source}`).test(normalized)
   );
+}
+
+function isDotenvCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  return /^\.env([.-][^/]*)?$|^\.envrc$/.test(path.basename(normalized));
 }
 
 function isGitOrSshCredentialPath(source) {

@@ -40,6 +40,7 @@ It checks for:
 - host Kubernetes credential directories or files bind-mounted into services
 - host package manager credential files bind-mounted into services
 - host build tool credential files bind-mounted into services
+- dotenv credential files bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -129,6 +130,7 @@ jobs:
 | `CRG035` | Service joins another container namespace |
 | `CRG036` | Compose config `file` escapes the scanned project |
 | `CRG037` | Service bind-mounts host build tool credentials |
+| `CRG038` | Service bind-mounts dotenv credential files |
 
 ## License
 

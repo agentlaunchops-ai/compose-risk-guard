@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG038` to flag dotenv credential files bind-mounted into Compose
+  services.
 - Add `CRG037` to flag host build tool credential files bind-mounted into
   Compose services.
 - Add `CRG036` to flag Compose config `file` references that escape the scanned

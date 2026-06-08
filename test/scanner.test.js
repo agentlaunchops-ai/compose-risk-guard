@@ -475,6 +475,39 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.composer/auth.json')));
 });
 
+test('dotenv credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    volumes:
+      - ./.env:/app/.env:ro
+      - /tmp/cache:/cache
+  worker:
+    image: worker:1.0.0
+    volumes:
+      - \${HOME}/.env.production:/run/secrets/env:ro
+  shell:
+    image: shell:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.envrc
+        target: /root/.envrc
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG038', 'CRG038', 'CRG038']
+  );
+  assert(findings.some((finding) => finding.message.includes('./.env')));
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.env.production')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.envrc')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
