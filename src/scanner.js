@@ -25,7 +25,8 @@ export const rules = {
   CRG020: 'Service bind-mounts a container runtime socket',
   CRG021: 'Service bind-mounts a host SSH agent socket',
   CRG022: 'Service adds capabilities without dropping defaults first',
-  CRG023: 'Service joins another service namespace'
+  CRG023: 'Service joins another service namespace',
+  CRG024: 'Service explicitly disables a read-only root filesystem'
 };
 
 const composeNames = new Set([
@@ -166,6 +167,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanSysctls(service, serviceName, filePath, text));
     findings.push(...scanHealthcheck(service, serviceName, filePath, text));
     findings.push(...scanLogging(service, serviceName, filePath, text));
+    findings.push(...scanReadOnlyRootFs(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -508,6 +510,18 @@ function scanLogging(service, serviceName, filePath, text) {
       `${serviceName} disables container logging with logging.driver: none`,
       filePath,
       lineFor(text, 'driver:')
+    )
+  ];
+}
+
+function scanReadOnlyRootFs(service, serviceName, filePath, text) {
+  if (service.read_only !== false) return [];
+  return [
+    finding(
+      'CRG024',
+      `${serviceName} explicitly disables a read-only root filesystem with read_only: false`,
+      filePath,
+      lineFor(text, 'read_only:')
     )
   ];
 }

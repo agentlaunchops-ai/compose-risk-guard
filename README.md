@@ -28,6 +28,7 @@ It checks for:
 - host SSH agent socket bind mounts
 - capability additions without first dropping default capabilities
 - services joining another service's network, PID, or IPC namespace
+- services explicitly disabling a read-only root filesystem
 
 ## Install
 
@@ -101,6 +102,7 @@ jobs:
 | `CRG021` | Service bind-mounts a host SSH agent socket |
 | `CRG022` | Service adds capabilities without dropping defaults first |
 | `CRG023` | Service joins another service namespace |
+| `CRG024` | Service explicitly disables a read-only root filesystem |
 
 ## License
 

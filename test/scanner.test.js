@@ -437,6 +437,27 @@ services:
   assert.match(findings[0].message, /api/);
 });
 
+test('explicitly writable root filesystems are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    read_only: false
+  worker:
+    image: worker:1.0.0
+    read_only: true
+  unset:
+    image: unset:1.0.0
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, 'CRG024');
+  assert.match(findings[0].message, /api/);
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

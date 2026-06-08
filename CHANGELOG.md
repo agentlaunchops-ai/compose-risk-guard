@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `CRG024` to flag services that explicitly set `read_only: false`.
 - Add `CRG023` to flag services that join another service's network, PID, or IPC
   namespace.
 - Add `CRG022` to flag services that add Linux capabilities without first
