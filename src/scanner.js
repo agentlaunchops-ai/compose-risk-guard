@@ -42,7 +42,8 @@ export const rules = {
   CRG037: 'Service bind-mounts host build tool credentials',
   CRG038: 'Service bind-mounts dotenv credential files',
   CRG039: 'Service bind-mounts host shell or REPL history files',
-  CRG040: 'Service bind-mounts host password store or PGP secrets'
+  CRG040: 'Service bind-mounts host password store or PGP secrets',
+  CRG041: 'Service bind-mounts Terraform or OpenTofu state or credentials'
 };
 
 const composeNames = new Set([
@@ -466,6 +467,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isTerraformStateOrCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG041',
+          `${serviceName} bind-mounts Terraform or OpenTofu state or credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -554,6 +566,7 @@ function normalizeVolumes(value) {
           !isDotenvCredentialPath(source) &&
           !isShellHistoryPath(source) &&
           !isPasswordStorePath(source) &&
+          !isTerraformStateOrCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1108,6 +1121,28 @@ function isPasswordStorePath(source) {
     /^\/home\/[^/]+\/(\.gnupg|\.password-store|\.local\/share\/(password-store|gnupg)|\.config\/(gopass|1Password))(\/|$)/.test(normalized) ||
     /^\/root\/(\.gnupg|\.password-store|\.local\/share\/(password-store|gnupg)|\.config\/(gopass|1Password))(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/(\.gnupg|\.password-store|\.local\/share\/(password-store|gnupg)|\.config\/(gopass|1Password))(\/|$)/.test(normalized)
+  );
+}
+
+function isTerraformStateOrCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = ['.terraform.d', '.tofu.d', '.terraformrc', '.tofurc'];
+  const basename = path.basename(normalized);
+  return (
+    basename === 'terraform.tfstate' ||
+    basename === 'terraform.tfstate.backup' ||
+    basename === 'tofu.tfstate' ||
+    basename === 'tofu.tfstate.backup' ||
+    basename.endsWith('.tfstate') ||
+    basename.endsWith('.tfstate.backup') ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    /^\/home\/[^/]+\/(\.terraform\.d|\.tofu\.d|\.terraformrc|\.tofurc)(\/|$)/.test(normalized) ||
+    /^\/root\/(\.terraform\.d|\.tofu\.d|\.terraformrc|\.tofurc)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/(\.terraform\.d|\.tofu\.d|\.terraformrc|\.tofurc)(\/|$)/.test(normalized)
   );
 }
 

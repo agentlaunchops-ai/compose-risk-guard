@@ -43,6 +43,7 @@ It checks for:
 - dotenv credential files bind-mounted into services
 - host shell or REPL history files bind-mounted into services
 - host password stores or PGP secrets bind-mounted into services
+- Terraform or OpenTofu state or credential files bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -135,6 +136,7 @@ jobs:
 | `CRG038` | Service bind-mounts dotenv credential files |
 | `CRG039` | Service bind-mounts host shell or REPL history files |
 | `CRG040` | Service bind-mounts host password store or PGP secrets |
+| `CRG041` | Service bind-mounts Terraform or OpenTofu state or credentials |
 
 ## License
 

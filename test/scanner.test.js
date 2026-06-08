@@ -584,6 +584,41 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.config/gopass')));
 });
 
+test('Terraform and OpenTofu state or credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  terraform:
+    image: hashicorp/terraform:1.12.1
+    volumes:
+      - \${HOME}/.terraform.d/credentials.tfrc.json:/root/.terraform.d/credentials.tfrc.json:ro
+      - ./terraform.tfstate:/workspace/terraform.tfstate:ro
+      - /tmp/cache:/cache
+  tofu:
+    image: ghcr.io/opentofu/opentofu:1.10.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.tofu.d/credentials.tfrc.json
+        target: /root/.tofu.d/credentials.tfrc.json
+  backup:
+    image: alpine:3.22
+    volumes:
+      - /home/alice/prod.tfstate.backup:/tmp/prod.tfstate.backup:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG041', 'CRG041', 'CRG041', 'CRG041']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.terraform.d/credentials.tfrc.json')));
+  assert(findings.some((finding) => finding.message.includes('./terraform.tfstate')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.tofu.d/credentials.tfrc.json')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/prod.tfstate.backup')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
