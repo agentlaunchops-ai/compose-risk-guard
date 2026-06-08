@@ -19,7 +19,8 @@ export const rules = {
   CRG014: 'Service maps a sensitive host device',
   CRG015: 'Service maps a hostname to the Docker host gateway',
   CRG016: 'Service disables TLS certificate verification',
-  CRG017: 'Service sets a high-risk kernel sysctl'
+  CRG017: 'Service sets a high-risk kernel sysctl',
+  CRG018: 'Service disables its container healthcheck'
 };
 
 const composeNames = new Set([
@@ -147,6 +148,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanDevices(service, serviceName, filePath, text));
     findings.push(...scanExtraHosts(service, serviceName, filePath, text));
     findings.push(...scanSysctls(service, serviceName, filePath, text));
+    findings.push(...scanHealthcheck(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -426,6 +428,19 @@ function scanSysctls(service, serviceName, filePath, text) {
         lineFor(text, entry.raw)
       )
     );
+}
+
+function scanHealthcheck(service, serviceName, filePath, text) {
+  if (!service.healthcheck || typeof service.healthcheck !== 'object') return [];
+  if (service.healthcheck.disable !== true) return [];
+  return [
+    finding(
+      'CRG018',
+      `${serviceName} disables its container healthcheck`,
+      filePath,
+      lineFor(text, 'disable:')
+    )
+  ];
 }
 
 function normalizeDevices(value) {

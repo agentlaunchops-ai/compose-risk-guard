@@ -22,6 +22,7 @@ It checks for:
 - host gateway mappings exposed through `extra_hosts`
 - TLS certificate verification bypasses in service environment values
 - high-risk kernel and networking settings in `sysctls`
+- disabled container healthchecks
 
 ## Install
 
@@ -89,6 +90,7 @@ jobs:
 | `CRG015` | Service maps a hostname to the Docker host gateway |
 | `CRG016` | Service disables TLS certificate verification |
 | `CRG017` | Service sets a high-risk kernel sysctl |
+| `CRG018` | Service disables its container healthcheck |
 
 ## License
 
