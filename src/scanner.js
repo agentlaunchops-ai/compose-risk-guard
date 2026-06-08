@@ -62,7 +62,8 @@ export const rules = {
   CRG057: 'Service bind-mounts host API client credentials',
   CRG058: 'Service bind-mounts host CI/CD service credentials',
   CRG059: 'Service bind-mounts host certificate authority or TLS private key material',
-  CRG060: 'Service bind-mounts host secret manager credentials'
+  CRG060: 'Service bind-mounts host secret manager credentials',
+  CRG061: 'Service bind-mounts host shell startup files'
 };
 
 const composeNames = new Set([
@@ -706,6 +707,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isShellStartupPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG061',
+          `${serviceName} bind-mounts host shell startup file ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -814,6 +826,7 @@ function normalizeVolumes(value) {
           !isCiCdCredentialPath(source) &&
           !isCertificateAuthorityKeyPath(source) &&
           !isSecretManagerCredentialPath(source) &&
+          !isShellStartupPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1879,6 +1892,30 @@ function isSecretManagerCredentialPath(source) {
     '.akeyless'
   ];
   const keyPattern = /(\.vault-token|\.config\/(vault|op|doppler|infisical)|\.op|\.akeyless)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isShellStartupPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.bash_profile',
+    '.bashrc',
+    '.config/fish/config.fish',
+    '.profile',
+    '.zprofile',
+    '.zshenv',
+    '.zshrc'
+  ];
+  const keyPattern = /(\.bash_profile|\.bashrc|\.config\/fish\/config\.fish|\.profile|\.zprofile|\.zshenv|\.zshrc)(\/|$)/;
   return (
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))

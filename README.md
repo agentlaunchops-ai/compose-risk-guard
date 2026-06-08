@@ -63,6 +63,7 @@ It checks for:
 - host CI/CD service credentials bind-mounted into services
 - host certificate authority or TLS private key material bind-mounted into services
 - host secret manager credentials bind-mounted into services
+- host shell startup files bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -175,6 +176,7 @@ jobs:
 | `CRG058` | Service bind-mounts host CI/CD service credentials |
 | `CRG059` | Service bind-mounts host certificate authority or TLS private key material |
 | `CRG060` | Service bind-mounts host secret manager credentials |
+| `CRG061` | Service bind-mounts host shell startup files |
 
 ## License
 

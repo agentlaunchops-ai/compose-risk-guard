@@ -1396,6 +1396,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.akeyless')));
 });
 
+test('host shell startup file bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  bash:
+    image: bash:5.2
+    volumes:
+      - \${HOME}/.bashrc:/root/.bashrc:ro
+      - /tmp/cache:/cache
+  zsh:
+    image: zsh:5.9
+    volumes:
+      - /home/alice/.zprofile:/root/.zprofile:ro
+  fish:
+    image: fish:4.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/fish/config.fish
+        target: /root/.config/fish/config.fish
+  profile:
+    image: alpine:3.22
+    volumes:
+      - ~/.profile:/root/.profile:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG061', 'CRG061', 'CRG061', 'CRG061']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.bashrc')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.zprofile')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/fish/config.fish')));
+  assert(findings.some((finding) => finding.message.includes('~/.profile')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `CRG061` to flag shell startup files bind-mounted into Compose services.
 - Add `CRG060` to flag secret manager CLI credentials bind-mounted into
   Compose services.
 - Add `CRG059` to flag certificate authority or TLS private key material
