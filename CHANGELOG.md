@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add `CRG022` to flag services that add Linux capabilities without first
+  dropping default capabilities with `cap_drop: [ALL]`.
+
 ## 1.0.0
 
 - Initial release.

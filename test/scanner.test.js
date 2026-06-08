@@ -190,13 +190,36 @@ services:
   });
 
   const findings = scanProject(dir);
-  assert.equal(findings.length, 2);
+  assert.equal(findings.length, 4);
   assert.deepEqual(
     findings.map((finding) => finding.ruleId),
-    ['CRG009', 'CRG009']
+    ['CRG009', 'CRG022', 'CRG009', 'CRG022']
   );
   assert(findings.some((finding) => finding.message.includes('SYS_PTRACE')));
   assert(findings.some((finding) => finding.message.includes('NET_ADMIN')));
+});
+
+test('capability additions without dropping defaults are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  tuned:
+    image: tuned:1.0.0
+    cap_add:
+      - NET_BIND_SERVICE
+  hardened:
+    image: hardened:1.0.0
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, 'CRG022');
+  assert.match(findings[0].message, /tuned/);
 });
 
 test('additional host namespace sharing is reported', () => {

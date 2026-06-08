@@ -23,7 +23,8 @@ export const rules = {
   CRG018: 'Service disables its container healthcheck',
   CRG019: 'Service disables container logging',
   CRG020: 'Service bind-mounts a container runtime socket',
-  CRG021: 'Service bind-mounts a host SSH agent socket'
+  CRG021: 'Service bind-mounts a host SSH agent socket',
+  CRG022: 'Service adds capabilities without dropping defaults first'
 };
 
 const composeNames = new Set([
@@ -313,7 +314,8 @@ function scanHostAccess(service, serviceName, filePath, text) {
     }
   }
 
-  for (const capability of normalizeCapabilities(service.cap_add)) {
+  const addedCapabilities = normalizeCapabilities(service.cap_add);
+  for (const capability of addedCapabilities) {
     if (!riskyCapabilities.has(capability)) continue;
     findings.push(
       finding(
@@ -321,6 +323,16 @@ function scanHostAccess(service, serviceName, filePath, text) {
         `${serviceName} adds high-risk Linux capability ${capability}`,
         filePath,
         lineFor(text, capability)
+      )
+    );
+  }
+  if (addedCapabilities.length > 0 && !dropsAllCapabilities(service.cap_drop)) {
+    findings.push(
+      finding(
+        'CRG022',
+        `${serviceName} adds Linux capabilities without cap_drop: [ALL]`,
+        filePath,
+        lineFor(text, 'cap_add')
       )
     );
   }
@@ -333,6 +345,10 @@ function normalizeCapabilities(value) {
     .filter((item) => typeof item === 'string')
     .map((item) => item.trim().toUpperCase().replace(/^CAP_/, ''))
     .filter(Boolean);
+}
+
+function dropsAllCapabilities(value) {
+  return normalizeCapabilities(value).includes('ALL');
 }
 
 function normalizeVolumes(value) {
