@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG023` to flag services that join another service's network, PID, or IPC
+  namespace.
 - Add `CRG022` to flag services that add Linux capabilities without first
   dropping default capabilities with `cap_drop: [ALL]`.
 

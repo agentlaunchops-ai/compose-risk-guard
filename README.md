@@ -27,6 +27,7 @@ It checks for:
 - container runtime socket bind mounts
 - host SSH agent socket bind mounts
 - capability additions without first dropping default capabilities
+- services joining another service's network, PID, or IPC namespace
 
 ## Install
 
@@ -99,6 +100,7 @@ jobs:
 | `CRG020` | Service bind-mounts a container runtime socket |
 | `CRG021` | Service bind-mounts a host SSH agent socket |
 | `CRG022` | Service adds capabilities without dropping defaults first |
+| `CRG023` | Service joins another service namespace |
 
 ## License
 

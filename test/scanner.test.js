@@ -250,6 +250,34 @@ services:
   assert(findings.some((finding) => finding.message.includes('userns_mode')));
 });
 
+test('service namespace sharing is reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  sidecar:
+    image: sidecar:1.0.0
+    network_mode: service:api
+  debugger:
+    image: debugger:1.0.0
+    pid: service:api
+    ipc: service:api
+  isolated:
+    image: isolated:1.0.0
+    network_mode: bridge
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG023', 'CRG023', 'CRG023']
+  );
+  assert(findings.some((finding) => finding.message.includes('network_mode: service:api')));
+  assert(findings.some((finding) => finding.message.includes('pid: service:api')));
+  assert(findings.some((finding) => finding.message.includes('ipc: service:api')));
+});
+
 test('sensitive host devices are reported', () => {
   const dir = fixture({
     'compose.yml': `

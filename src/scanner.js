@@ -24,7 +24,8 @@ export const rules = {
   CRG019: 'Service disables container logging',
   CRG020: 'Service bind-mounts a container runtime socket',
   CRG021: 'Service bind-mounts a host SSH agent socket',
-  CRG022: 'Service adds capabilities without dropping defaults first'
+  CRG022: 'Service adds capabilities without dropping defaults first',
+  CRG023: 'Service joins another service namespace'
 };
 
 const composeNames = new Set([
@@ -305,6 +306,8 @@ function scanHostAccess(service, serviceName, filePath, text) {
   for (const key of ['network_mode', 'pid', 'ipc']) {
     if (service[key] === 'host') {
       findings.push(finding('CRG005', `${serviceName} uses ${key}: host`, filePath, lineFor(text, key)));
+    } else if (isServiceNamespace(service[key])) {
+      findings.push(finding('CRG023', `${serviceName} uses ${key}: ${service[key]}`, filePath, lineFor(text, key)));
     }
   }
 
@@ -653,6 +656,10 @@ function isTruthyString(value) {
 
 function isFalseyString(value) {
   return value === '0' || value === 'false' || value === 'no';
+}
+
+function isServiceNamespace(value) {
+  return typeof value === 'string' && value.trim().toLowerCase().startsWith('service:');
 }
 
 function isSensitiveHostPath(source) {
