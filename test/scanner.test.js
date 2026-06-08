@@ -167,6 +167,35 @@ services:
   assert(findings.some((finding) => finding.message.includes('userns_mode')));
 });
 
+test('sensitive host devices are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  vm:
+    image: vm:1.0.0
+    devices:
+      - /dev/kvm:/dev/kvm
+      - /dev/null:/dev/null
+  graphics:
+    image: graphics:1.0.0
+    devices:
+      - source: /dev/dri/renderD128
+        target: /dev/dri/renderD128
+  app:
+    image: app:1.0.0
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG014', 'CRG014']
+  );
+  assert(findings.some((finding) => finding.message.includes('/dev/kvm')));
+  assert(findings.some((finding) => finding.message.includes('/dev/dri/renderD128')));
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

@@ -15,7 +15,8 @@ export const rules = {
   CRG010: 'Service disables a container security profile',
   CRG011: 'Service publishes a sensitive port on all interfaces',
   CRG012: 'Service explicitly runs as root',
-  CRG013: 'Service shares an additional host namespace'
+  CRG013: 'Service shares an additional host namespace',
+  CRG014: 'Service maps a sensitive host device'
 };
 
 const composeNames = new Set([
@@ -61,6 +62,14 @@ const sensitivePorts = new Set([
   15672, // RabbitMQ management
   27017 // MongoDB
 ]);
+const sensitiveDevices = [
+  '/dev/bus/usb',
+  '/dev/dri',
+  '/dev/fuse',
+  '/dev/kvm',
+  '/dev/mem',
+  '/dev/net/tun'
+];
 
 export function discoverComposeFiles(rootDir) {
   const found = [];
@@ -115,6 +124,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanSecurityOptions(service, serviceName, filePath, text));
     findings.push(...scanPublishedPorts(service, serviceName, filePath, text));
     findings.push(...scanUser(service, serviceName, filePath, text));
+    findings.push(...scanDevices(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -328,6 +338,32 @@ function scanUser(service, serviceName, filePath, text) {
   ];
 }
 
+function scanDevices(service, serviceName, filePath, text) {
+  return normalizeDevices(service.devices)
+    .filter((device) => isSensitiveDevice(device.source))
+    .map((device) =>
+      finding(
+        'CRG014',
+        `${serviceName} maps sensitive host device ${device.source}`,
+        filePath,
+        lineFor(text, device.raw)
+      )
+    );
+}
+
+function normalizeDevices(value) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === 'string') {
+      const [source] = item.split(':');
+      return source ? [{ source, raw: item }] : [];
+    }
+    if (!item || typeof item !== 'object') return [];
+    const source = item.source || item.path || item.host_path || item.hostPath || '';
+    return source ? [{ source: String(source), raw: String(source) }] : [];
+  });
+}
+
 function normalizePorts(value) {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
@@ -398,6 +434,10 @@ function isSecretLiteral(key, value) {
 
 function isSensitiveHostPath(source) {
   return sensitiveHostPaths.some((candidate) => source === candidate || source.startsWith(`${candidate}/`));
+}
+
+function isSensitiveDevice(source) {
+  return sensitiveDevices.some((candidate) => source === candidate || source.startsWith(`${candidate}/`));
 }
 
 function isSubpath(rootDir, targetPath) {

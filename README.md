@@ -18,6 +18,7 @@ It checks for:
 - sensitive service ports published on all interfaces
 - services explicitly configured to run as root
 - additional host namespace sharing through `cgroup`, `uts`, or `userns_mode`
+- sensitive host devices exposed through `devices`
 
 ## Install
 
@@ -81,6 +82,7 @@ jobs:
 | `CRG011` | Service publishes a sensitive port on all interfaces |
 | `CRG012` | Service explicitly runs as root |
 | `CRG013` | Service shares an additional host namespace |
+| `CRG014` | Service maps a sensitive host device |
 
 ## License
 
