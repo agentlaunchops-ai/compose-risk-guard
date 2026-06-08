@@ -39,6 +39,7 @@ It checks for:
 - host Kubernetes credential directories or files bind-mounted into services
 - host package manager credential files bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
+- services joining another container's network, PID, or IPC namespace
 
 ## Install
 
@@ -123,6 +124,7 @@ jobs:
 | `CRG032` | Service bind-mounts host Kubernetes credentials |
 | `CRG033` | Service bind-mounts host package manager credentials |
 | `CRG034` | Service bind-mounts host Git or SSH credentials |
+| `CRG035` | Service joins another container namespace |
 
 ## License
 

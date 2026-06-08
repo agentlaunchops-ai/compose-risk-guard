@@ -546,6 +546,34 @@ services:
   assert(findings.some((finding) => finding.message.includes('ipc: service:api')));
 });
 
+test('container namespace sharing is reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  sniffer:
+    image: sniffer:1.0.0
+    network_mode: container:vpn
+  debugger:
+    image: debugger:1.0.0
+    pid: container:api
+    ipc: container:api
+  isolated:
+    image: isolated:1.0.0
+    network_mode: service:api
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG035', 'CRG035', 'CRG035', 'CRG023']
+  );
+  assert(findings.some((finding) => finding.message.includes('network_mode: container:vpn')));
+  assert(findings.some((finding) => finding.message.includes('pid: container:api')));
+  assert(findings.some((finding) => finding.message.includes('ipc: container:api')));
+});
+
 test('sensitive host devices are reported', () => {
   const dir = fixture({
     'compose.yml': `

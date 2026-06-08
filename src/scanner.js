@@ -36,7 +36,8 @@ export const rules = {
   CRG031: 'Service bind-mounts host cloud provider credentials',
   CRG032: 'Service bind-mounts host Kubernetes credentials',
   CRG033: 'Service bind-mounts host package manager credentials',
-  CRG034: 'Service bind-mounts host Git or SSH credentials'
+  CRG034: 'Service bind-mounts host Git or SSH credentials',
+  CRG035: 'Service joins another container namespace'
 };
 
 const composeNames = new Set([
@@ -419,6 +420,8 @@ function scanHostAccess(service, serviceName, filePath, text) {
       findings.push(finding('CRG005', `${serviceName} uses ${key}: host`, filePath, lineFor(text, key)));
     } else if (isServiceNamespace(service[key])) {
       findings.push(finding('CRG023', `${serviceName} uses ${key}: ${service[key]}`, filePath, lineFor(text, key)));
+    } else if (isContainerNamespace(service[key])) {
+      findings.push(finding('CRG035', `${serviceName} uses ${key}: ${service[key]}`, filePath, lineFor(text, key)));
     }
   }
 
@@ -853,6 +856,10 @@ function isFalseyString(value) {
 
 function isServiceNamespace(value) {
   return typeof value === 'string' && value.trim().toLowerCase().startsWith('service:');
+}
+
+function isContainerNamespace(value) {
+  return typeof value === 'string' && value.trim().toLowerCase().startsWith('container:');
 }
 
 function isSensitiveHostPath(source) {
