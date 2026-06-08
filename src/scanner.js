@@ -48,7 +48,8 @@ export const rules = {
   CRG043: 'Service bind-mounts cryptocurrency wallet or chain keys',
   CRG044: 'Service bind-mounts host AI provider credentials',
   CRG045: 'Service bind-mounts host browser profile data',
-  CRG046: 'Service bind-mounts host database client credentials'
+  CRG046: 'Service bind-mounts host database client credentials',
+  CRG047: 'Service bind-mounts host backup or sync credentials'
 };
 
 const composeNames = new Set([
@@ -538,6 +539,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isBackupOrSyncCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG047',
+          `${serviceName} bind-mounts host backup or sync credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -632,6 +644,7 @@ function normalizeVolumes(value) {
           !isAiProviderCredentialPath(source) &&
           !isBrowserProfilePath(source) &&
           !isDatabaseClientCredentialPath(source) &&
+          !isBackupOrSyncCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1325,6 +1338,28 @@ function isDatabaseClientCredentialPath(source) {
     '.duckdbrc'
   ];
   const keyPattern = /(\.pgpass|\.pg_service\.conf|\.my\.cnf|\.mylogin\.cnf|\.mongorc\.js|\.dbshell|\.duckdbrc)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isBackupOrSyncCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/rclone/rclone.conf',
+    '.config/restic',
+    '.restic',
+    '.borg',
+    '.config/borg'
+  ];
+  const keyPattern = /(\.config\/rclone\/rclone\.conf|\.config\/restic|\.restic|\.borg|\.config\/borg)(\/|$)/;
   return (
     homePrefixes.some((home) =>
       homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG047` to flag host backup and sync credentials bind-mounted into
+  Compose services.
 - Add `CRG046` to flag host database client credentials bind-mounted into
   Compose services.
 - Add `CRG045` to flag host browser profile data bind-mounted into Compose

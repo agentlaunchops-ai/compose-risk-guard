@@ -809,6 +809,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.duckdbrc')));
 });
 
+test('host backup and sync credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  rclone:
+    image: rclone/rclone:1.70
+    volumes:
+      - \${HOME}/.config/rclone/rclone.conf:/config/rclone/rclone.conf:ro
+      - /tmp/cache:/cache
+  restic:
+    image: restic/restic:0.18.0
+    volumes:
+      - /home/alice/.config/restic:/root/.config/restic:ro
+  borg:
+    image: borgbackup/borg:1.4.1
+    volumes:
+      - type: bind
+        source: /Users/alice/.borg
+        target: /root/.borg
+  restic-home:
+    image: restic/restic:0.18.0
+    volumes:
+      - ~/.restic:/root/.restic:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG047', 'CRG047', 'CRG047', 'CRG047']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/rclone/rclone.conf')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/restic')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.borg')));
+  assert(findings.some((finding) => finding.message.includes('~/.restic')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
