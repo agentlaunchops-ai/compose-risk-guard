@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG039` to flag host shell and REPL history files bind-mounted into
+  Compose services.
 - Add `CRG038` to flag dotenv credential files bind-mounted into Compose
   services.
 - Add `CRG037` to flag host build tool credential files bind-mounted into

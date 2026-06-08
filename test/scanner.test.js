@@ -508,6 +508,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('/Users/alice/.envrc')));
 });
 
+test('host shell and REPL history bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  shell:
+    image: shell:1.0.0
+    volumes:
+      - \${HOME}/.bash_history:/root/.bash_history:ro
+      - /tmp/cache:/cache
+  db:
+    image: postgres:16
+    volumes:
+      - /home/alice/.psql_history:/tmp/psql_history:ro
+  node:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/.node_repl_history
+        target: /root/.node_repl_history
+  zsh:
+    image: zsh:1.0.0
+    volumes:
+      - ~/.zsh_history:/tmp/zsh_history:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG039', 'CRG039', 'CRG039', 'CRG039']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.bash_history')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.psql_history')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.node_repl_history')));
+  assert(findings.some((finding) => finding.message.includes('~/.zsh_history')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

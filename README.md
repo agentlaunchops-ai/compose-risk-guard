@@ -41,6 +41,7 @@ It checks for:
 - host package manager credential files bind-mounted into services
 - host build tool credential files bind-mounted into services
 - dotenv credential files bind-mounted into services
+- host shell or REPL history files bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -131,6 +132,7 @@ jobs:
 | `CRG036` | Compose config `file` escapes the scanned project |
 | `CRG037` | Service bind-mounts host build tool credentials |
 | `CRG038` | Service bind-mounts dotenv credential files |
+| `CRG039` | Service bind-mounts host shell or REPL history files |
 
 ## License
 

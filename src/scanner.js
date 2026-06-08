@@ -40,7 +40,8 @@ export const rules = {
   CRG035: 'Service joins another container namespace',
   CRG036: 'Compose config file escapes the scanned project',
   CRG037: 'Service bind-mounts host build tool credentials',
-  CRG038: 'Service bind-mounts dotenv credential files'
+  CRG038: 'Service bind-mounts dotenv credential files',
+  CRG039: 'Service bind-mounts host shell or REPL history files'
 };
 
 const composeNames = new Set([
@@ -442,6 +443,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isShellHistoryPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG039',
+          `${serviceName} bind-mounts host shell or REPL history file ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -528,6 +540,7 @@ function normalizeVolumes(value) {
           !isPackageManagerCredentialPath(source) &&
           !isBuildToolCredentialPath(source) &&
           !isDotenvCredentialPath(source) &&
+          !isShellHistoryPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1032,6 +1045,35 @@ function isDotenvCredentialPath(source) {
   const normalized = String(source || '').trim();
   if (!normalized) return false;
   return /^\.env([.-][^/]*)?$|^\.envrc$/.test(path.basename(normalized));
+}
+
+function isShellHistoryPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const historyFiles = [
+    '.ash_history',
+    '.bash_history',
+    '.fish_history',
+    '.mysql_history',
+    '.node_repl_history',
+    '.psql_history',
+    '.python_history',
+    '.rediscli_history',
+    '.sqlite_history',
+    '.zsh_history'
+  ];
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  return (
+    homePrefixes.some((home) =>
+      historyFiles.some((file) => normalized === `${home}/${file}` || normalized.startsWith(`${home}/${file}/`))
+    ) ||
+    /^\/home\/[^/]+\/\.(ash|bash|fish|mysql|psql|python|rediscli|sqlite|zsh)_history(\/|$)/.test(normalized) ||
+    /^\/home\/[^/]+\/\.node_repl_history(\/|$)/.test(normalized) ||
+    /^\/root\/\.(ash|bash|fish|mysql|psql|python|rediscli|sqlite|zsh)_history(\/|$)/.test(normalized) ||
+    /^\/root\/\.node_repl_history(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/\.(ash|bash|fish|mysql|psql|python|rediscli|sqlite|zsh)_history(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/\.node_repl_history(\/|$)/.test(normalized)
+  );
 }
 
 function isGitOrSshCredentialPath(source) {
