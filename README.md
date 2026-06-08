@@ -177,6 +177,7 @@ jobs:
 | `CRG059` | Service bind-mounts host certificate authority or TLS private key material |
 | `CRG060` | Service bind-mounts host secret manager credentials |
 | `CRG061` | Service bind-mounts host shell startup files |
+| `CRG062` | Service bind-mounts host editor or IDE state |
 
 ## License
 

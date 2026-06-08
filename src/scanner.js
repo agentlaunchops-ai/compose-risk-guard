@@ -63,7 +63,8 @@ export const rules = {
   CRG058: 'Service bind-mounts host CI/CD service credentials',
   CRG059: 'Service bind-mounts host certificate authority or TLS private key material',
   CRG060: 'Service bind-mounts host secret manager credentials',
-  CRG061: 'Service bind-mounts host shell startup files'
+  CRG061: 'Service bind-mounts host shell startup files',
+  CRG062: 'Service bind-mounts host editor or IDE state'
 };
 
 const composeNames = new Set([
@@ -718,6 +719,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isEditorOrIdeStatePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG062',
+          `${serviceName} bind-mounts host editor or IDE state from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -827,6 +839,7 @@ function normalizeVolumes(value) {
           !isCertificateAuthorityKeyPath(source) &&
           !isSecretManagerCredentialPath(source) &&
           !isShellStartupPath(source) &&
+          !isEditorOrIdeStatePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1923,6 +1936,33 @@ function isShellStartupPath(source) {
     new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isEditorOrIdeStatePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.vscode',
+    '.config/Code',
+    '.config/VSCodium',
+    '.config/JetBrains',
+    '.config/zed',
+    'Library/Application Support/Code',
+    'Library/Application Support/VSCodium',
+    'Library/Application Support/JetBrains',
+    'Library/Application Support/Zed'
+  ];
+  const keyPattern = /(\.vscode|\.config\/(Code|VSCodium|JetBrains|zed))(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    /^\/home\/[^/]+\/(\.vscode|\.config\/(Code|VSCodium|JetBrains|zed))(\/|$)/.test(normalized) ||
+    /^\/root\/(\.vscode|\.config\/(Code|VSCodium|JetBrains|zed))(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/(\.vscode|\.config\/(Code|VSCodium|JetBrains|zed))(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Code|VSCodium|JetBrains|Zed)(\/|$)/.test(normalized)
   );
 }
 

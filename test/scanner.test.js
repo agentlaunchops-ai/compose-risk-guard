@@ -1434,6 +1434,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.profile')));
 });
 
+test('host editor and IDE state bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  vscode:
+    image: node:20
+    volumes:
+      - \${HOME}/.vscode:/root/.vscode:ro
+      - /tmp/cache:/cache
+  code:
+    image: node:20
+    volumes:
+      - /home/alice/.config/Code/User/globalStorage:/tmp/code-state:ro
+  jetbrains:
+    image: idea:2025.1
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/JetBrains
+        target: /root/.config/JetBrains
+  zed:
+    image: zed:1.0.0
+    volumes:
+      - ~/.config/zed:/root/.config/zed:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG062', 'CRG062', 'CRG062', 'CRG062']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.vscode')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/Code')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/JetBrains')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/zed')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
