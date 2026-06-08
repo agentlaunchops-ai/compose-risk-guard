@@ -25,6 +25,7 @@ It checks for:
 - disabled container healthchecks
 - disabled container logging
 - container runtime socket bind mounts
+- host SSH agent socket bind mounts
 
 ## Install
 
@@ -95,6 +96,7 @@ jobs:
 | `CRG018` | Service disables its container healthcheck |
 | `CRG019` | Service disables container logging |
 | `CRG020` | Service bind-mounts a container runtime socket |
+| `CRG021` | Service bind-mounts a host SSH agent socket |
 
 ## License
 

@@ -22,7 +22,8 @@ export const rules = {
   CRG017: 'Service sets a high-risk kernel sysctl',
   CRG018: 'Service disables its container healthcheck',
   CRG019: 'Service disables container logging',
-  CRG020: 'Service bind-mounts a container runtime socket'
+  CRG020: 'Service bind-mounts a container runtime socket',
+  CRG021: 'Service bind-mounts a host SSH agent socket'
 };
 
 const composeNames = new Set([
@@ -82,6 +83,10 @@ const containerRuntimeSockets = [
   '/run/docker.sock',
   '/run/podman/podman.sock',
   '/var/run/podman/podman.sock'
+];
+const sshAgentSockets = [
+  '/run/host-services/ssh-auth.sock',
+  '/ssh-agent'
 ];
 const insecureTlsEnv = {
   NODE_TLS_REJECT_UNAUTHORIZED: (value) => value === '0',
@@ -278,6 +283,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isSshAgentSocket(mount.source)) {
+      findings.push(
+        finding(
+          'CRG021',
+          `${serviceName} bind-mounts host SSH agent socket ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (mount.type === 'bind' && isSensitiveHostPath(mount.source)) {
       findings.push(
         finding('CRG006', `${serviceName} bind-mounts sensitive host path ${mount.source}`, filePath, lineFor(text, mount.source))
@@ -324,7 +340,7 @@ function normalizeVolumes(value) {
   return value.flatMap((item) => {
     if (typeof item === 'string') {
       const [source, target, mode = ''] = item.split(':');
-      if (!target || !source.startsWith('/')) return [];
+      if (!target || (!source.startsWith('/') && !isSshAgentSocket(source))) return [];
       return [{ type: 'bind', source, target, mode }];
     }
     if (item && typeof item === 'object') {
@@ -633,6 +649,18 @@ function isSensitiveDevice(source) {
 
 function isContainerRuntimeSocket(source) {
   return containerRuntimeSockets.includes(source);
+}
+
+function isSshAgentSocket(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const upper = normalized.toUpperCase();
+  if (upper.includes('SSH_AUTH_SOCK')) return true;
+  return (
+    sshAgentSockets.includes(normalized) ||
+    /^\/tmp\/ssh-[^/]+\/agent\.\d+$/.test(normalized) ||
+    /^\/run\/user\/\d+\/keyring\/ssh$/.test(normalized)
+  );
 }
 
 function isSubpath(rootDir, targetPath) {

@@ -144,6 +144,36 @@ services:
   assert(findings.some((finding) => finding.message.includes('/run/podman/podman.sock')));
 });
 
+test('host SSH agent socket bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  deployer:
+    image: deployer:1.0.0
+    volumes:
+      - \${SSH_AUTH_SOCK}:/ssh-agent
+      - /tmp/ssh-AbCdEf/agent.1234:/tmp/agent.sock
+      - /tmp/app.sock:/tmp/app.sock
+  desktop:
+    image: desktop:1.0.0
+    volumes:
+      - type: bind
+        source: /run/host-services/ssh-auth.sock
+        target: /ssh-agent
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG021', 'CRG021', 'CRG021']
+  );
+  assert(findings.some((finding) => finding.message.includes('SSH_AUTH_SOCK')));
+  assert(findings.some((finding) => finding.message.includes('/tmp/ssh-AbCdEf/agent.1234')));
+  assert(findings.some((finding) => finding.message.includes('/run/host-services/ssh-auth.sock')));
+});
+
 test('high-risk added Linux capabilities are reported', () => {
   const dir = fixture({
     'compose.yml': `
