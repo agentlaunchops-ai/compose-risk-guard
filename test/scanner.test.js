@@ -458,6 +458,33 @@ services:
   assert.match(findings[0].message, /api/);
 });
 
+test('literal secret label values are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    labels:
+      com.example.api-token: plain-token
+      com.example.visible: public
+  worker:
+    image: worker:1.0.0
+    labels:
+      - com.example.client_secret=\${CLIENT_SECRET}
+      - com.example.password=plain-password
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG025', 'CRG025']
+  );
+  assert(findings.some((finding) => finding.message.includes('api-token')));
+  assert(findings.some((finding) => finding.message.includes('password')));
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

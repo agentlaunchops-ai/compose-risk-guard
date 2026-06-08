@@ -26,7 +26,8 @@ export const rules = {
   CRG021: 'Service bind-mounts a host SSH agent socket',
   CRG022: 'Service adds capabilities without dropping defaults first',
   CRG023: 'Service joins another service namespace',
-  CRG024: 'Service explicitly disables a read-only root filesystem'
+  CRG024: 'Service explicitly disables a read-only root filesystem',
+  CRG025: 'Service label contains a secret-like literal'
 };
 
 const composeNames = new Set([
@@ -36,7 +37,7 @@ const composeNames = new Set([
   'docker-compose.yaml'
 ]);
 
-const secretKeyPattern = /(^|_)(password|passwd|pwd|secret|token|api_?key|access_?key|private_?key|client_?secret|auth|credential)s?($|_)/i;
+const secretKeyPattern = /(^|[_.-])(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth|credential)s?($|[_.-])/i;
 const substitutionPattern = /^\$\{[^}]+}$/;
 const sensitiveHostPaths = [
   '/etc',
@@ -168,6 +169,7 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
     findings.push(...scanHealthcheck(service, serviceName, filePath, text));
     findings.push(...scanLogging(service, serviceName, filePath, text));
     findings.push(...scanReadOnlyRootFs(service, serviceName, filePath, text));
+    findings.push(...scanLabels(service, serviceName, filePath, text));
   }
   return findings;
 }
@@ -524,6 +526,32 @@ function scanReadOnlyRootFs(service, serviceName, filePath, text) {
       lineFor(text, 'read_only:')
     )
   ];
+}
+
+function scanLabels(service, serviceName, filePath, text) {
+  return normalizeLabels(service.labels)
+    .filter(([key, value]) => isSecretLiteral(key, value))
+    .map(([key]) =>
+      finding(
+        'CRG025',
+        `${serviceName} sets secret-like label ${key} with a literal value`,
+        filePath,
+        lineFor(text, key)
+      )
+    );
+}
+
+function normalizeLabels(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      if (typeof item !== 'string') return [];
+      const [key, ...rest] = item.split('=');
+      return [[key, rest.join('=')]];
+    });
+  }
+  if (typeof value === 'object') return Object.entries(value);
+  return [];
 }
 
 function normalizeDevices(value) {
