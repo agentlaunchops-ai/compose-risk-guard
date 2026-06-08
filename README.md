@@ -61,6 +61,7 @@ It checks for:
 - host local LLM runtime data bind-mounted into services
 - host API client credentials bind-mounted into services
 - host CI/CD service credentials bind-mounted into services
+- host certificate authority or TLS private key material bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -171,6 +172,7 @@ jobs:
 | `CRG056` | Service bind-mounts host local LLM runtime data |
 | `CRG057` | Service bind-mounts host API client credentials |
 | `CRG058` | Service bind-mounts host CI/CD service credentials |
+| `CRG059` | Service bind-mounts host certificate authority or TLS private key material |
 
 ## License
 

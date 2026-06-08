@@ -60,7 +60,8 @@ export const rules = {
   CRG055: 'Service bind-mounts host password manager vaults or credentials',
   CRG056: 'Service bind-mounts host local LLM runtime data',
   CRG057: 'Service bind-mounts host API client credentials',
-  CRG058: 'Service bind-mounts host CI/CD service credentials'
+  CRG058: 'Service bind-mounts host CI/CD service credentials',
+  CRG059: 'Service bind-mounts host certificate authority or TLS private key material'
 };
 
 const composeNames = new Set([
@@ -682,6 +683,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isCertificateAuthorityKeyPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG059',
+          `${serviceName} bind-mounts host certificate authority or TLS private key material from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -788,6 +800,7 @@ function normalizeVolumes(value) {
           !isLocalLlmRuntimePath(source) &&
           !isApiClientCredentialPath(source) &&
           !isCiCdCredentialPath(source) &&
+          !isCertificateAuthorityKeyPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1800,6 +1813,42 @@ function isCiCdCredentialPath(source) {
     new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isCertificateAuthorityKeyPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.step',
+    '.config/step',
+    '.cfssl',
+    '.config/cfssl',
+    '.local/share/mkcert',
+    '.minica',
+    'Library/Application Support/mkcert',
+    'Library/Application Support/Smallstep'
+  ];
+  const keyPattern = /(\.step|\.config\/step|\.cfssl|\.config\/cfssl|\.local\/share\/mkcert|\.minica)(\/|$)/;
+  return (
+    normalized === '/etc/ssl/private' ||
+    normalized.startsWith('/etc/ssl/private/') ||
+    normalized === '/etc/pki/private' ||
+    normalized.startsWith('/etc/pki/private/') ||
+    normalized === '/etc/step' ||
+    normalized.startsWith('/etc/step/') ||
+    normalized === '/var/lib/step' ||
+    normalized.startsWith('/var/lib/step/') ||
+    path.basename(normalized) === 'root_ca_key.pem' ||
+    path.basename(normalized) === 'intermediate_ca_key.pem' ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(mkcert|Smallstep)(\/|$)/.test(normalized)
   );
 }
 

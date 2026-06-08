@@ -1310,6 +1310,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.jenkins')));
 });
 
+test('host certificate authority and TLS private key bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  step:
+    image: smallstep/step-cli:0.28.4
+    volumes:
+      - \${HOME}/.step:/root/.step:ro
+      - /tmp/cache:/cache
+  mkcert:
+    image: node:20
+    volumes:
+      - /home/alice/.local/share/mkcert:/root/.local/share/mkcert:ro
+  cfssl:
+    image: cfssl/cfssl:1.6.5
+    volumes:
+      - type: bind
+        source: /Users/alice/.cfssl
+        target: /root/.cfssl
+  system:
+    image: alpine:3.22
+    volumes:
+      - /etc/ssl/private:/host-ssl-private:ro
+  keyfile:
+    image: alpine:3.22
+    volumes:
+      - ./root_ca_key.pem:/run/root_ca_key.pem:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG059', 'CRG059', 'CRG059', 'CRG059', 'CRG059']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.step')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.local/share/mkcert')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.cfssl')));
+  assert(findings.some((finding) => finding.message.includes('/etc/ssl/private')));
+  assert(findings.some((finding) => finding.message.includes('./root_ca_key.pem')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
