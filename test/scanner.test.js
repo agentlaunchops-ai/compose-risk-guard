@@ -1267,6 +1267,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.curlrc')));
 });
 
+test('host CI/CD service credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  circleci:
+    image: node:20
+    volumes:
+      - \${HOME}/.circleci:/root/.circleci:ro
+      - /tmp/cache:/cache
+  buildkite:
+    image: node:20
+    volumes:
+      - /home/alice/.buildkite:/root/.buildkite:ro
+  gitlab:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/glab-cli
+        target: /root/.config/glab-cli
+  drone:
+    image: node:20
+    volumes:
+      - ~/.config/drone:/root/.config/drone:ro
+  jenkins:
+    image: jenkins/jenkins:2.516.1
+    volumes:
+      - /root/.jenkins:/host-jenkins:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG058', 'CRG058', 'CRG058', 'CRG058', 'CRG058']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.circleci')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.buildkite')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/glab-cli')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/drone')));
+  assert(findings.some((finding) => finding.message.includes('/root/.jenkins')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

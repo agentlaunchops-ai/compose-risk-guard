@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG058` to flag host CI/CD service credentials bind-mounted into Compose
+  services.
 - Add `CRG057` to flag host API client credentials bind-mounted into Compose
   services.
 - Add `CRG056` to flag local LLM runtime data bind-mounted into Compose

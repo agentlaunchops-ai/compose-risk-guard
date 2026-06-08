@@ -59,7 +59,8 @@ export const rules = {
   CRG054: 'Service bind-mounts host email client credentials',
   CRG055: 'Service bind-mounts host password manager vaults or credentials',
   CRG056: 'Service bind-mounts host local LLM runtime data',
-  CRG057: 'Service bind-mounts host API client credentials'
+  CRG057: 'Service bind-mounts host API client credentials',
+  CRG058: 'Service bind-mounts host CI/CD service credentials'
 };
 
 const composeNames = new Set([
@@ -670,6 +671,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isCiCdCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG058',
+          `${serviceName} bind-mounts host CI/CD service credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -775,6 +787,7 @@ function normalizeVolumes(value) {
           !isPasswordManagerCredentialPath(source) &&
           !isLocalLlmRuntimePath(source) &&
           !isApiClientCredentialPath(source) &&
+          !isCiCdCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1760,6 +1773,33 @@ function isApiClientCredentialPath(source) {
     /^\/root\/(\.insomnia|\.bruno|\.hoppscotch|\.curlrc|\.wgetrc)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/\.config\/(httpie|postman|Insomnia|insomnia)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/(\.insomnia|\.bruno|\.hoppscotch|\.curlrc|\.wgetrc)(\/|$)/.test(normalized)
+  );
+}
+
+function isCiCdCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.circleci',
+    '.config/circleci',
+    '.buildkite',
+    '.config/buildkite',
+    '.travis',
+    '.travis.yml',
+    '.config/glab-cli',
+    '.config/drone',
+    '.config/jenkins',
+    '.jenkins'
+  ];
+  const keyPattern = /(\.circleci|\.config\/circleci|\.buildkite|\.config\/buildkite|\.travis|\.travis\.yml|\.config\/(glab-cli|drone|jenkins)|\.jenkins)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
   );
 }
 
