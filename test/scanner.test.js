@@ -1353,6 +1353,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('./root_ca_key.pem')));
 });
 
+test('host secret manager credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  vault:
+    image: hashicorp/vault:1.19
+    volumes:
+      - \${HOME}/.vault-token:/root/.vault-token:ro
+      - /tmp/cache:/cache
+  onepassword:
+    image: 1password/op:2
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/op
+        target: /root/.config/op
+  doppler:
+    image: dopplerhq/cli:3
+    volumes:
+      - ~/.config/doppler:/root/.config/doppler:ro
+  infisical:
+    image: infisical/cli:0.42.1
+    volumes:
+      - /home/alice/.config/infisical:/root/.config/infisical:ro
+  akeyless:
+    image: akeyless/base:1.0.0
+    volumes:
+      - /root/.akeyless:/host-akeyless:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG060', 'CRG060', 'CRG060', 'CRG060', 'CRG060']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.vault-token')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/op')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/doppler')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/infisical')));
+  assert(findings.some((finding) => finding.message.includes('/root/.akeyless')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

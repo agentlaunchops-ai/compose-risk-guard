@@ -61,7 +61,8 @@ export const rules = {
   CRG056: 'Service bind-mounts host local LLM runtime data',
   CRG057: 'Service bind-mounts host API client credentials',
   CRG058: 'Service bind-mounts host CI/CD service credentials',
-  CRG059: 'Service bind-mounts host certificate authority or TLS private key material'
+  CRG059: 'Service bind-mounts host certificate authority or TLS private key material',
+  CRG060: 'Service bind-mounts host secret manager credentials'
 };
 
 const composeNames = new Set([
@@ -694,6 +695,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isSecretManagerCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG060',
+          `${serviceName} bind-mounts host secret manager credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -801,6 +813,7 @@ function normalizeVolumes(value) {
           !isApiClientCredentialPath(source) &&
           !isCiCdCredentialPath(source) &&
           !isCertificateAuthorityKeyPath(source) &&
+          !isSecretManagerCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1849,6 +1862,30 @@ function isCertificateAuthorityKeyPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(mkcert|Smallstep)(\/|$)/.test(normalized)
+  );
+}
+
+function isSecretManagerCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.vault-token',
+    '.config/vault',
+    '.config/op',
+    '.op',
+    '.config/doppler',
+    '.config/infisical',
+    '.akeyless'
+  ];
+  const keyPattern = /(\.vault-token|\.config\/(vault|op|doppler|infisical)|\.op|\.akeyless)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
   );
 }
 

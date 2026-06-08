@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG060` to flag secret manager CLI credentials bind-mounted into
+  Compose services.
 - Add `CRG059` to flag certificate authority or TLS private key material
   bind-mounted into Compose services.
 - Add `CRG058` to flag host CI/CD service credentials bind-mounted into Compose
