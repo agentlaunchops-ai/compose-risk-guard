@@ -1138,6 +1138,49 @@ services:
   assert(findings.some((finding) => finding.message.includes('/root/.msmtprc')));
 });
 
+test('host password manager credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  bitwarden:
+    image: node:20
+    volumes:
+      - \${HOME}/.config/Bitwarden:/root/.config/Bitwarden:ro
+      - /tmp/cache:/cache
+  bitwarden-cli:
+    image: node:20
+    volumes:
+      - /home/alice/.config/Bitwarden CLI:/root/.config/Bitwarden CLI:ro
+  keepassxc:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/KeePassXC
+        target: /host/keepassxc
+  keepass-data:
+    image: node:20
+    volumes:
+      - ~/.local/share/keepassxc:/root/.local/share/keepassxc:ro
+  vault-file:
+    image: node:20
+    volumes:
+      - /vaults/prod.kdbx:/run/prod.kdbx:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 5);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG055', 'CRG055', 'CRG055', 'CRG055', 'CRG055']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/Bitwarden')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/Bitwarden CLI')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/KeePassXC')));
+  assert(findings.some((finding) => finding.message.includes('~/.local/share/keepassxc')));
+  assert(findings.some((finding) => finding.message.includes('/vaults/prod.kdbx')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

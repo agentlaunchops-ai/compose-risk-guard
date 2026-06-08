@@ -56,7 +56,8 @@ export const rules = {
   CRG051: 'Service bind-mounts host observability tool credentials',
   CRG052: 'Service bind-mounts host payment processor credentials',
   CRG053: 'Service bind-mounts host collaboration app credentials',
-  CRG054: 'Service bind-mounts host email client credentials'
+  CRG054: 'Service bind-mounts host email client credentials',
+  CRG055: 'Service bind-mounts host password manager vaults or credentials'
 };
 
 const composeNames = new Set([
@@ -634,6 +635,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isPasswordManagerCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG055',
+          `${serviceName} bind-mounts host password manager vaults or credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -736,6 +748,7 @@ function normalizeVolumes(value) {
           !isPaymentProcessorCredentialPath(source) &&
           !isCollaborationAppCredentialPath(source) &&
           !isEmailClientCredentialPath(source) &&
+          !isPasswordManagerCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -1640,6 +1653,33 @@ function isEmailClientCredentialPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/(Mail|Accounts|Thunderbird)(\/|$)/.test(normalized)
+  );
+}
+
+function isPasswordManagerCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/Bitwarden',
+    '.config/Bitwarden CLI',
+    '.config/bitwarden',
+    '.config/keepassxc',
+    '.local/share/keepassxc',
+    'Library/Application Support/Bitwarden',
+    'Library/Application Support/Bitwarden CLI',
+    'Library/Application Support/KeePassXC'
+  ];
+  const keyPattern = /(\.config\/(Bitwarden|Bitwarden CLI|bitwarden|keepassxc)|\.local\/share\/keepassxc)(\/|$)/;
+  return (
+    path.basename(normalized).endsWith('.kdbx') ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Bitwarden|Bitwarden CLI|KeePassXC)(\/|$)/.test(normalized)
   );
 }
 
