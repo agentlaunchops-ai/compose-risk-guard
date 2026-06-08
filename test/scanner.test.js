@@ -485,6 +485,39 @@ services:
   assert(findings.some((finding) => finding.message.includes('password')));
 });
 
+test('insecure Docker daemon TCP endpoints are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    environment:
+      DOCKER_HOST: tcp://docker-proxy:2375
+  worker:
+    image: worker:1.0.0
+    environment:
+      - DOCKER_HOST=tcp://docker-host:2375
+  tls:
+    image: tls:1.0.0
+    environment:
+      DOCKER_HOST: tcp://docker-host:2376
+  socket:
+    image: socket:1.0.0
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 2);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG026', 'CRG026']
+  );
+  assert(findings.some((finding) => finding.message.includes('api')));
+  assert(findings.some((finding) => finding.message.includes('worker')));
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

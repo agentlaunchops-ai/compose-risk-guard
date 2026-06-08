@@ -27,7 +27,8 @@ export const rules = {
   CRG022: 'Service adds capabilities without dropping defaults first',
   CRG023: 'Service joins another service namespace',
   CRG024: 'Service explicitly disables a read-only root filesystem',
-  CRG025: 'Service label contains a secret-like literal'
+  CRG025: 'Service label contains a secret-like literal',
+  CRG026: 'Service points Docker clients at an insecure TCP daemon'
 };
 
 const composeNames = new Set([
@@ -196,6 +197,16 @@ function scanEnvironment(service, serviceName, filePath, text) {
         finding(
           'CRG016',
           `${serviceName} disables TLS certificate verification with ${key}=${value}`,
+          filePath,
+          lineFor(text, key)
+        )
+      );
+    }
+    if (isInsecureDockerHostEnv(key, value)) {
+      findings.push(
+        finding(
+          'CRG026',
+          `${serviceName} points Docker clients at an insecure TCP daemon with ${key}=${value}`,
           filePath,
           lineFor(text, key)
         )
@@ -683,6 +694,14 @@ function isInsecureTlsEnv(key, value) {
   const normalizedValue = String(value ?? '').trim().toLowerCase();
   const check = insecureTlsEnv[normalizedKey];
   return Boolean(check && check(normalizedValue));
+}
+
+function isInsecureDockerHostEnv(key, value) {
+  if (String(key || '').trim().toUpperCase() !== 'DOCKER_HOST') return false;
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+  if (!normalizedValue.startsWith('tcp://')) return false;
+  if (substitutionPattern.test(normalizedValue)) return false;
+  return normalizedValue.includes(':2375') || !normalizedValue.includes(':2376');
 }
 
 function isRiskySysctl(key, value) {

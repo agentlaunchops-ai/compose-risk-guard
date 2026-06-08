@@ -30,6 +30,7 @@ It checks for:
 - services joining another service's network, PID, or IPC namespace
 - services explicitly disabling a read-only root filesystem
 - secret-looking service labels with literal values
+- Docker clients pointed at insecure TCP daemons
 
 ## Install
 
@@ -105,6 +106,7 @@ jobs:
 | `CRG023` | Service joins another service namespace |
 | `CRG024` | Service explicitly disables a read-only root filesystem |
 | `CRG025` | Service label contains a secret-like literal |
+| `CRG026` | Service points Docker clients at an insecure TCP daemon |
 
 ## License
 

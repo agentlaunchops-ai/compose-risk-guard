@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `CRG026` to flag Docker clients pointed at insecure TCP daemons.
 - Add `CRG025` to flag secret-like service labels with literal values.
 - Add `CRG024` to flag services that explicitly set `read_only: false`.
 - Add `CRG023` to flag services that join another service's network, PID, or IPC
