@@ -17,7 +17,8 @@ export const rules = {
   CRG012: 'Service explicitly runs as root',
   CRG013: 'Service shares an additional host namespace',
   CRG014: 'Service maps a sensitive host device',
-  CRG015: 'Service maps a hostname to the Docker host gateway'
+  CRG015: 'Service maps a hostname to the Docker host gateway',
+  CRG016: 'Service disables TLS certificate verification'
 };
 
 const composeNames = new Set([
@@ -71,6 +72,13 @@ const sensitiveDevices = [
   '/dev/mem',
   '/dev/net/tun'
 ];
+const insecureTlsEnv = {
+  NODE_TLS_REJECT_UNAUTHORIZED: (value) => value === '0',
+  PYTHONHTTPSVERIFY: (value) => value === '0',
+  GIT_SSL_NO_VERIFY: isTruthyString,
+  CURL_SSL_NO_VERIFY: isTruthyString,
+  AWS_SSL_VERIFY: isFalseyString
+};
 
 export function discoverComposeFiles(rootDir) {
   const found = [];
@@ -134,23 +142,31 @@ export function scanComposeFile(filePath, rootDir = path.dirname(filePath)) {
 function scanEnvironment(service, serviceName, filePath, text) {
   const env = service.environment;
   if (!env) return [];
-  const entries = Array.isArray(env)
-    ? env.map((item) => {
-        const [key, ...rest] = String(item).split('=');
-        return [key, rest.join('=')];
-      })
-    : Object.entries(env);
+  const entries = normalizeKeyValueEntries(env);
 
   return entries.flatMap(([key, value]) => {
-    if (!isSecretLiteral(key, value)) return [];
-    return [
-      finding(
-        'CRG001',
-        `${serviceName} sets secret-like environment variable ${key} with a literal value`,
-        filePath,
-        lineFor(text, key)
-      )
-    ];
+    const findings = [];
+    if (isSecretLiteral(key, value)) {
+      findings.push(
+        finding(
+          'CRG001',
+          `${serviceName} sets secret-like environment variable ${key} with a literal value`,
+          filePath,
+          lineFor(text, key)
+        )
+      );
+    }
+    if (isInsecureTlsEnv(key, value)) {
+      findings.push(
+        finding(
+          'CRG016',
+          `${serviceName} disables TLS certificate verification with ${key}=${value}`,
+          filePath,
+          lineFor(text, key)
+        )
+      );
+    }
+    return findings;
   });
 }
 
@@ -166,18 +182,39 @@ function scanEnvFiles(service, serviceName, composePath, rootDir) {
       if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) return;
       const [key, ...rest] = trimmed.split('=');
       const value = rest.join('=');
-      if (!isSecretLiteral(key, value)) return;
-      findings.push(
-        finding(
-          'CRG002',
-          `${serviceName} env_file ${ref} contains secret-like literal ${key}`,
-          envPath,
-          index + 1
-        )
-      );
+      if (isSecretLiteral(key, value)) {
+        findings.push(
+          finding(
+            'CRG002',
+            `${serviceName} env_file ${ref} contains secret-like literal ${key}`,
+            envPath,
+            index + 1
+          )
+        );
+      }
+      if (isInsecureTlsEnv(key, value)) {
+        findings.push(
+          finding(
+            'CRG016',
+            `${serviceName} env_file ${ref} disables TLS certificate verification with ${key}=${value}`,
+            envPath,
+            index + 1
+          )
+        );
+      }
     });
   }
   return findings;
+}
+
+function normalizeKeyValueEntries(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      const [key, ...rest] = String(item).split('=');
+      return [key, rest.join('=')];
+    });
+  }
+  return Object.entries(value);
 }
 
 function normalizeEnvFiles(value) {
@@ -467,6 +504,21 @@ function isSecretLiteral(key, value) {
   if (!normalized || substitutionPattern.test(normalized)) return false;
   if (/^(true|false|null)$/i.test(normalized)) return false;
   return true;
+}
+
+function isInsecureTlsEnv(key, value) {
+  const normalizedKey = String(key || '').trim().toUpperCase();
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+  const check = insecureTlsEnv[normalizedKey];
+  return Boolean(check && check(normalizedValue));
+}
+
+function isTruthyString(value) {
+  return value === '1' || value === 'true' || value === 'yes';
+}
+
+function isFalseyString(value) {
+  return value === '0' || value === 'false' || value === 'no';
 }
 
 function isSensitiveHostPath(source) {

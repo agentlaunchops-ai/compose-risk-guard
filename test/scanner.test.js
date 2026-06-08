@@ -222,6 +222,36 @@ services:
   assert(findings.some((finding) => finding.message.includes('host.local')));
 });
 
+test('TLS verification bypass environment values are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  api:
+    image: api:1.0.0
+    environment:
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      GIT_SSL_NO_VERIFY: "true"
+      CURL_SSL_NO_VERIFY: "false"
+      PYTHONHTTPSVERIFY: "1"
+  worker:
+    image: worker:1.0.0
+    env_file:
+      - ./worker.env
+`,
+    'worker.env': 'AWS_SSL_VERIFY=false\nNODE_TLS_REJECT_UNAUTHORIZED=1\n'
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG016', 'CRG016', 'CRG016']
+  );
+  assert(findings.some((finding) => finding.message.includes('NODE_TLS_REJECT_UNAUTHORIZED')));
+  assert(findings.some((finding) => finding.message.includes('GIT_SSL_NO_VERIFY')));
+  assert(findings.some((finding) => finding.message.includes('AWS_SSL_VERIFY')));
+});
+
 test('disabled container security profiles are reported', () => {
   const dir = fixture({
     'compose.yml': `

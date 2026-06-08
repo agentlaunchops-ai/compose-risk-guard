@@ -20,6 +20,7 @@ It checks for:
 - additional host namespace sharing through `cgroup`, `uts`, or `userns_mode`
 - sensitive host devices exposed through `devices`
 - host gateway mappings exposed through `extra_hosts`
+- TLS certificate verification bypasses in service environment values
 
 ## Install
 
@@ -85,6 +86,7 @@ jobs:
 | `CRG013` | Service shares an additional host namespace |
 | `CRG014` | Service maps a sensitive host device |
 | `CRG015` | Service maps a hostname to the Docker host gateway |
+| `CRG016` | Service disables TLS certificate verification |
 
 ## License
 
