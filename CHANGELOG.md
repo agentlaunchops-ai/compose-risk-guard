@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add `CRG073` to flag host artifact signing credentials bind-mounted into
+  Compose services.
+- Add `CRG072` to flag host VPN client profiles or state bind-mounted into
+  Compose services.
 - Add `CRG071` to flag host mobile app signing credentials bind-mounted into
   Compose services.
 - Add `CRG070` to flag host language runtime package caches bind-mounted into

@@ -2199,6 +2199,44 @@ services:
   assert.match(findings[0].message, /api/);
 });
 
+test('host artifact signing credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  cosign:
+    image: cgr.dev/chainguard/cosign:2.2.4
+    volumes:
+      - \${HOME}/.sigstore:/root/.sigstore:ro
+      - /tmp/cache:/cache
+  notation:
+    image: notation:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/.config/notation
+        target: /root/.config/notation
+  minisign:
+    image: alpine:3.22
+    volumes:
+      - /home/alice/minisign.key:/run/minisign.key:ro
+  notary:
+    image: notary:1.0.0
+    volumes:
+      - ~/.notary:/root/.notary:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG073', 'CRG073', 'CRG073', 'CRG073']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.sigstore')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.config/notation')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/minisign.key')));
+  assert(findings.some((finding) => finding.message.includes('~/.notary')));
+});
+
 test('literal secret label values are reported', () => {
   const dir = fixture({
     'compose.yml': `

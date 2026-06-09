@@ -74,7 +74,8 @@ export const rules = {
   CRG069: 'Service bind-mounts host remote access credentials',
   CRG070: 'Service bind-mounts host language runtime package caches',
   CRG071: 'Service bind-mounts host mobile app signing credentials',
-  CRG072: 'Service bind-mounts host VPN client profiles or state'
+  CRG072: 'Service bind-mounts host VPN client profiles or state',
+  CRG073: 'Service bind-mounts host artifact signing credentials'
 };
 
 const composeNames = new Set([
@@ -850,6 +851,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isArtifactSigningCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG073',
+          `${serviceName} bind-mounts host artifact signing credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -970,6 +982,7 @@ function normalizeVolumes(value) {
           !isLanguageRuntimePackageCachePath(source) &&
           !isMobileSigningCredentialPath(source) &&
           !isVpnClientProfilePath(source) &&
+          !isArtifactSigningCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2378,6 +2391,33 @@ function isVpnClientProfilePath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Tunnelblick|Viscosity)(\/|$)/.test(normalized)
+  );
+}
+
+function isArtifactSigningCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.sigstore',
+    '.cosign',
+    '.config/sigstore',
+    '.config/cosign',
+    '.config/notation',
+    '.config/notary',
+    '.local/share/notation',
+    '.notary'
+  ];
+  const keyPattern = /(\.sigstore|\.cosign|\.config\/(sigstore|cosign|notation|notary)|\.local\/share\/notation|\.notary)(\/|$)/;
+  return (
+    path.basename(normalized) === 'cosign.key' ||
+    path.basename(normalized) === 'minisign.key' ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
   );
 }
 
