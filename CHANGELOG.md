@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG071` to flag host mobile app signing credentials bind-mounted into
+  Compose services.
 - Add `CRG070` to flag host language runtime package caches bind-mounted into
   Compose services.
 - Add `CRG069` to flag host remote access credentials bind-mounted into Compose

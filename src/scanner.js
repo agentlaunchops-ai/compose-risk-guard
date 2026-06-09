@@ -72,7 +72,8 @@ export const rules = {
   CRG067: 'Service bind-mounts host browser automation session state',
   CRG068: 'Service bind-mounts host private sync tool identity data',
   CRG069: 'Service bind-mounts host remote access credentials',
-  CRG070: 'Service bind-mounts host language runtime package caches'
+  CRG070: 'Service bind-mounts host language runtime package caches',
+  CRG071: 'Service bind-mounts host mobile app signing credentials'
 };
 
 const composeNames = new Set([
@@ -826,6 +827,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isMobileSigningCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG071',
+          `${serviceName} bind-mounts host mobile app signing credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -944,6 +956,7 @@ function normalizeVolumes(value) {
           !isPrivateSyncIdentityPath(source) &&
           !isRemoteAccessCredentialPath(source) &&
           !isLanguageRuntimePackageCachePath(source) &&
+          !isMobileSigningCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2294,6 +2307,35 @@ function isLanguageRuntimePackageCachePath(source) {
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Caches\/(pip|pypoetry|Yarn)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/Library\/pnpm(\/|$)/.test(normalized)
+  );
+}
+
+function isMobileSigningCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.android/debug.keystore',
+    '.android/release.keystore',
+    '.appstoreconnect/private_keys',
+    'Library/MobileDevice/Provisioning Profiles',
+    'Library/Developer/Xcode/UserData/Provisioning Profiles'
+  ];
+  const keyPattern = /(\.android\/(debug|release)\.keystore|\.appstoreconnect\/private_keys)(\/|$)/;
+  return (
+    path.basename(normalized).endsWith('.keystore') ||
+    path.basename(normalized).endsWith('.jks') ||
+    path.basename(normalized).endsWith('.mobileprovision') ||
+    path.basename(normalized).endsWith('.p12') ||
+    path.basename(normalized).startsWith('AuthKey_') ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/MobileDevice\/Provisioning Profiles(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Developer\/Xcode\/UserData\/Provisioning Profiles(\/|$)/.test(normalized)
   );
 }
 

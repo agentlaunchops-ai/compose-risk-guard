@@ -1776,6 +1776,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Caches/Yarn')));
 });
 
+test('host mobile app signing credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  android:
+    image: gradle:8.14
+    volumes:
+      - \${HOME}/.android/debug.keystore:/root/.android/debug.keystore:ro
+      - /tmp/cache:/cache
+  release:
+    image: gradle:8.14
+    volumes:
+      - /home/alice/releases/upload-key.jks:/run/signing/upload-key.jks:ro
+  xcode:
+    image: xcode-builder:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/MobileDevice/Provisioning Profiles
+        target: /profiles
+  appstore:
+    image: fastlane:2.227
+    volumes:
+      - ~/.appstoreconnect/private_keys/AuthKey_ABC123.p8:/keys/AuthKey_ABC123.p8:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG071', 'CRG071', 'CRG071', 'CRG071']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.android/debug.keystore')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/releases/upload-key.jks')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/MobileDevice/Provisioning Profiles')));
+  assert(findings.some((finding) => finding.message.includes('~/.appstoreconnect/private_keys/AuthKey_ABC123.p8')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
