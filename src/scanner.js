@@ -75,7 +75,8 @@ export const rules = {
   CRG070: 'Service bind-mounts host language runtime package caches',
   CRG071: 'Service bind-mounts host mobile app signing credentials',
   CRG072: 'Service bind-mounts host VPN client profiles or state',
-  CRG073: 'Service bind-mounts host artifact signing credentials'
+  CRG073: 'Service bind-mounts host artifact signing credentials',
+  CRG074: 'Service bind-mounts host calendar or contact data'
 };
 
 const composeNames = new Set([
@@ -862,6 +863,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isCalendarOrContactDataPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG074',
+          `${serviceName} bind-mounts host calendar or contact data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -983,6 +995,7 @@ function normalizeVolumes(value) {
           !isMobileSigningCredentialPath(source) &&
           !isVpnClientProfilePath(source) &&
           !isArtifactSigningCredentialPath(source) &&
+          !isCalendarOrContactDataPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2418,6 +2431,30 @@ function isArtifactSigningCredentialPath(source) {
     new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized)
+  );
+}
+
+function isCalendarOrContactDataPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/khal',
+    '.config/vdirsyncer',
+    '.local/share/evolution',
+    '.local/share/gnome-calendar',
+    'Library/Application Support/AddressBook',
+    'Library/Calendars'
+  ];
+  const keyPattern = /(\.config\/(khal|vdirsyncer)|\.local\/share\/(evolution|gnome-calendar))(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/(Calendars|Application Support\/AddressBook)(\/|$)/.test(normalized)
   );
 }
 

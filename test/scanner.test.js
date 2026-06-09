@@ -2237,6 +2237,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.notary')));
 });
 
+test('host calendar and contact data bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  khal:
+    image: python:3.12
+    volumes:
+      - \${HOME}/.config/khal:/root/.config/khal:ro
+      - /tmp/cache:/cache
+  evolution:
+    image: alpine:3.22
+    volumes:
+      - /home/alice/.local/share/evolution:/root/evolution:ro
+  contacts:
+    image: alpine:3.22
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/AddressBook
+        target: /contacts
+  calendars:
+    image: alpine:3.22
+    volumes:
+      - ~/Library/Calendars:/calendars:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG074', 'CRG074', 'CRG074', 'CRG074']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/khal')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.local/share/evolution')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/AddressBook')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Calendars')));
+});
+
 test('literal secret label values are reported', () => {
   const dir = fixture({
     'compose.yml': `

@@ -75,6 +75,7 @@ It checks for:
 - host mobile app signing credentials bind-mounted into services
 - host VPN client profiles or state bind-mounted into services
 - host artifact signing credentials bind-mounted into services
+- host calendar or contact data bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -200,6 +201,7 @@ jobs:
 | `CRG071` | Service bind-mounts host mobile app signing credentials |
 | `CRG072` | Service bind-mounts host VPN client profiles or state |
 | `CRG073` | Service bind-mounts host artifact signing credentials |
+| `CRG074` | Service bind-mounts host calendar or contact data |
 
 ## License
 
