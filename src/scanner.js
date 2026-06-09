@@ -65,7 +65,8 @@ export const rules = {
   CRG060: 'Service bind-mounts host secret manager credentials',
   CRG061: 'Service bind-mounts host shell startup files',
   CRG062: 'Service bind-mounts host editor or IDE state',
-  CRG063: 'Service bind-mounts host terminal emulator state'
+  CRG063: 'Service bind-mounts host terminal emulator state',
+  CRG064: 'Service bind-mounts host notes or knowledge-base data'
 };
 
 const composeNames = new Set([
@@ -742,6 +743,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isNotesOrKnowledgeBasePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG064',
+          `${serviceName} bind-mounts host notes or knowledge-base data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -853,6 +865,7 @@ function normalizeVolumes(value) {
           !isShellStartupPath(source) &&
           !isEditorOrIdeStatePath(source) &&
           !isTerminalEmulatorStatePath(source) &&
+          !isNotesOrKnowledgeBasePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2003,6 +2016,35 @@ function isTerminalEmulatorStatePath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(com\.mitchellh\.ghostty|iTerm2|Warp)(\/|$)/.test(normalized)
+  );
+}
+
+function isNotesOrKnowledgeBasePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/joplin',
+    '.config/joplin-desktop',
+    '.config/logseq',
+    '.logseq',
+    'Library/Application Support/Joplin',
+    'Library/Application Support/logseq',
+    'Library/Application Support/Notion',
+    'Library/Group Containers/group.com.apple.notes'
+  ];
+  const keyPattern = /(\.config\/(joplin|joplin-desktop|logseq)|\.logseq)(\/|$)/;
+  return (
+    normalized.endsWith('/.obsidian') ||
+    normalized.includes('/.obsidian/') ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Joplin|logseq|Notion)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Group Containers\/group\.com\.apple\.notes(\/|$)/.test(normalized)
   );
 }
 

@@ -64,6 +64,7 @@ It checks for:
 - host certificate authority or TLS private key material bind-mounted into services
 - host secret manager credentials bind-mounted into services
 - host shell startup files bind-mounted into services
+- host notes or knowledge-base data bind-mounted into services
 - host terminal emulator state bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
@@ -180,6 +181,7 @@ jobs:
 | `CRG061` | Service bind-mounts host shell startup files |
 | `CRG062` | Service bind-mounts host editor or IDE state |
 | `CRG063` | Service bind-mounts host terminal emulator state |
+| `CRG064` | Service bind-mounts host notes or knowledge-base data |
 
 ## License
 

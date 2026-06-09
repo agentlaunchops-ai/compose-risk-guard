@@ -1510,6 +1510,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.config/ghostty')));
 });
 
+test('host notes and knowledge-base data bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  obsidian:
+    image: node:20
+    volumes:
+      - \${HOME}/Documents/Vault/.obsidian:/vault/.obsidian:ro
+      - /tmp/cache:/cache
+  logseq:
+    image: node:20
+    volumes:
+      - /home/alice/.config/logseq:/root/.config/logseq:ro
+  notion:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/Notion
+        target: /host-notion
+  notes:
+    image: node:20
+    volumes:
+      - ~/Library/Group Containers/group.com.apple.notes:/host-notes:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG064', 'CRG064', 'CRG064', 'CRG064']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/Documents/Vault/.obsidian')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/logseq')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/Notion')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Group Containers/group.com.apple.notes')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

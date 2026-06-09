@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG064` to flag host notes or knowledge-base data bind-mounted into
+  Compose services.
 - Add `CRG063` to flag host terminal emulator state bind-mounted into Compose
   services.
 - Add `CRG062` to flag host editor or IDE state bind-mounted into Compose
