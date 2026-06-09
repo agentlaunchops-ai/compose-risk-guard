@@ -2381,6 +2381,44 @@ volumes:
   assert(findings.some((finding) => finding.message.includes('~/Documents/H&R Block/return.tax24')));
 });
 
+test('host photo library data bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  photos:
+    image: alpine:3.22
+    volumes:
+      - ~/Pictures/Photos Library.photoslibrary:/photos:ro
+      - /tmp/cache:/cache
+  lightroom:
+    image: alpine:3.22
+    volumes:
+      - /Users/alice/Pictures/Lightroom/Catalog.lrcat:/catalog:ro
+  digikam:
+    image: alpine:3.22
+    volumes:
+      - type: bind
+        source: /home/alice/.local/share/digikam
+        target: /digikam
+  linuxconfig:
+    image: alpine:3.22
+    volumes:
+      - \${HOME}/.config/digikamrc:/digikamrc:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG078', 'CRG078', 'CRG078', 'CRG078']
+  );
+  assert(findings.some((finding) => finding.message.includes('~/Pictures/Photos Library.photoslibrary')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Pictures/Lightroom/Catalog.lrcat')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.local/share/digikam')));
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/digikamrc')));
+});
+
 test('literal secret label values are reported', () => {
   const dir = fixture({
     'compose.yml': `

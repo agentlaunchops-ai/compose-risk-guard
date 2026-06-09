@@ -79,7 +79,8 @@ export const rules = {
   CRG074: 'Service bind-mounts host calendar or contact data',
   CRG075: 'Service bind-mounts host messaging app data',
   CRG076: 'Service bind-mounts a host credential agent socket',
-  CRG077: 'Service bind-mounts host tax or accounting app data'
+  CRG077: 'Service bind-mounts host tax or accounting app data',
+  CRG078: 'Service bind-mounts host photo library data'
 };
 
 const composeNames = new Set([
@@ -910,6 +911,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isPhotoLibraryDataPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG078',
+          `${serviceName} bind-mounts host photo library data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -1035,6 +1047,7 @@ function normalizeVolumes(value) {
           !isMessagingAppDataPath(source) &&
           !isCredentialAgentSocketPath(source) &&
           !isTaxOrAccountingDataPath(source) &&
+          !isPhotoLibraryDataPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2561,6 +2574,31 @@ function isTaxOrAccountingDataPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(GnuCash|Quicken|QuickBooks)(\/|$)/.test(normalized)
+  );
+}
+
+function isPhotoLibraryDataPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    'Pictures/Photos Library.photoslibrary',
+    'Pictures/iPhoto Library.photolibrary',
+    'Pictures/Lightroom',
+    'Pictures/Lightroom Catalog.lrcat',
+    '.config/digikamrc',
+    '.local/share/digikam'
+  ];
+  const linuxPattern = /(\.config\/digikamrc|\.local\/share\/digikam)(\/|$)/;
+  return (
+    /\.(photoslibrary|photolibrary|aplibrary|lrcat)$/i.test(path.basename(normalized)) ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${linuxPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${linuxPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/Pictures/(Photos Library\\.photoslibrary|iPhoto Library\\.photolibrary|Lightroom)(/|$)`).test(normalized) ||
+    /^\/Users\/[^/]+\/Pictures\/[^/]+\.lrcat$/i.test(normalized)
   );
 }
 
