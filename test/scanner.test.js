@@ -1814,6 +1814,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.appstoreconnect/private_keys/AuthKey_ABC123.p8')));
 });
 
+test('host VPN client profile bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  wireguard:
+    image: linuxserver/wireguard:1.0.20250521
+    volumes:
+      - \${HOME}/.config/wireguard/wg0.conf:/config/wg0.conf:ro
+      - /tmp/cache:/cache
+  openvpn:
+    image: openvpn:2.6
+    volumes:
+      - /home/alice/.openvpn/client.ovpn:/etc/openvpn/client.ovpn:ro
+  mac:
+    image: vpn-helper:1.0.0
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/Tunnelblick
+        target: /tunnelblick
+  system:
+    image: alpine:3.22
+    volumes:
+      - /etc/wireguard:/host-wireguard:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG072', 'CRG072', 'CRG072', 'CRG072']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/wireguard/wg0.conf')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.openvpn/client.ovpn')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/Tunnelblick')));
+  assert(findings.some((finding) => finding.message.includes('/etc/wireguard')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

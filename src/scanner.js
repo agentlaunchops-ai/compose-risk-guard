@@ -73,7 +73,8 @@ export const rules = {
   CRG068: 'Service bind-mounts host private sync tool identity data',
   CRG069: 'Service bind-mounts host remote access credentials',
   CRG070: 'Service bind-mounts host language runtime package caches',
-  CRG071: 'Service bind-mounts host mobile app signing credentials'
+  CRG071: 'Service bind-mounts host mobile app signing credentials',
+  CRG072: 'Service bind-mounts host VPN client profiles or state'
 };
 
 const composeNames = new Set([
@@ -838,6 +839,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isVpnClientProfilePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG072',
+          `${serviceName} bind-mounts host VPN client profiles or state from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -957,6 +969,7 @@ function normalizeVolumes(value) {
           !isRemoteAccessCredentialPath(source) &&
           !isLanguageRuntimePackageCachePath(source) &&
           !isMobileSigningCredentialPath(source) &&
+          !isVpnClientProfilePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2336,6 +2349,35 @@ function isMobileSigningCredentialPath(source) {
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/MobileDevice\/Provisioning Profiles(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Developer\/Xcode\/UserData\/Provisioning Profiles(\/|$)/.test(normalized)
+  );
+}
+
+function isVpnClientProfilePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/wireguard',
+    '.config/openvpn',
+    '.openvpn',
+    'Library/Application Support/Tunnelblick',
+    'Library/Application Support/Viscosity'
+  ];
+  const keyPattern = /(\.config\/(wireguard|openvpn)|\.openvpn)(\/|$)/;
+  return (
+    normalized === '/etc/wireguard' ||
+    normalized.startsWith('/etc/wireguard/') ||
+    normalized === '/etc/openvpn' ||
+    normalized.startsWith('/etc/openvpn/') ||
+    path.basename(normalized).endsWith('.ovpn') ||
+    (path.basename(normalized).endsWith('.conf') && normalized.includes('/wireguard/')) ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Tunnelblick|Viscosity)(\/|$)/.test(normalized)
   );
 }
 

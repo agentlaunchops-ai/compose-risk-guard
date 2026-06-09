@@ -73,6 +73,7 @@ It checks for:
 - host remote access credentials bind-mounted into services
 - host language runtime package caches bind-mounted into services
 - host mobile app signing credentials bind-mounted into services
+- host VPN client profiles or state bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -196,6 +197,7 @@ jobs:
 | `CRG069` | Service bind-mounts host remote access credentials |
 | `CRG070` | Service bind-mounts host language runtime package caches |
 | `CRG071` | Service bind-mounts host mobile app signing credentials |
+| `CRG072` | Service bind-mounts host VPN client profiles or state |
 
 ## License
 
