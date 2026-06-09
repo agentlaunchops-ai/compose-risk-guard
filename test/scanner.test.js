@@ -2346,6 +2346,41 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Signal')));
 });
 
+test('host tax or accounting app data bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  linux:
+    image: alpine:3.22
+    volumes:
+      - ~/.config/gnucash:/host-gnucash:ro
+      - /home/alice/Documents/TurboTax/2025.tax2025:/tax:ro
+  mac:
+    image: alpine:3.22
+    volumes:
+      - /Users/alice/Library/Application Support/QuickBooks:/quickbooks:ro
+      - ~/Documents/H&R Block/return.tax24:/return:ro
+  named:
+    image: alpine:3.22
+    volumes:
+      - business_data:/data
+volumes:
+  business_data:
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG077', 'CRG077', 'CRG077', 'CRG077']
+  );
+  assert(findings.some((finding) => finding.message.includes('~/.config/gnucash')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/Documents/TurboTax/2025.tax2025')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/QuickBooks')));
+  assert(findings.some((finding) => finding.message.includes('~/Documents/H&R Block/return.tax24')));
+});
+
 test('literal secret label values are reported', () => {
   const dir = fixture({
     'compose.yml': `

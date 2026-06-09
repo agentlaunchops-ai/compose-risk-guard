@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG077` to flag host tax or accounting app data bind-mounted into Compose
+  services.
 - Add `CRG076` to flag host credential agent sockets bind-mounted into Compose
   services.
 - Add `CRG075` to flag host messaging app data bind-mounted into Compose

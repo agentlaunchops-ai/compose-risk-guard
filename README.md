@@ -78,6 +78,7 @@ It checks for:
 - host calendar or contact data bind-mounted into services
 - host messaging app data bind-mounted into services
 - host credential agent sockets bind-mounted into services
+- host tax or accounting app data bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -206,6 +207,7 @@ jobs:
 | `CRG074` | Service bind-mounts host calendar or contact data |
 | `CRG075` | Service bind-mounts host messaging app data |
 | `CRG076` | Service bind-mounts a host credential agent socket |
+| `CRG077` | Service bind-mounts host tax or accounting app data |
 
 ## License
 

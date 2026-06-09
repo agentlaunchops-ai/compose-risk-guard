@@ -78,7 +78,8 @@ export const rules = {
   CRG073: 'Service bind-mounts host artifact signing credentials',
   CRG074: 'Service bind-mounts host calendar or contact data',
   CRG075: 'Service bind-mounts host messaging app data',
-  CRG076: 'Service bind-mounts a host credential agent socket'
+  CRG076: 'Service bind-mounts a host credential agent socket',
+  CRG077: 'Service bind-mounts host tax or accounting app data'
 };
 
 const composeNames = new Set([
@@ -898,6 +899,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isTaxOrAccountingDataPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG077',
+          `${serviceName} bind-mounts host tax or accounting app data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -1022,6 +1034,7 @@ function normalizeVolumes(value) {
           !isCalendarOrContactDataPath(source) &&
           !isMessagingAppDataPath(source) &&
           !isCredentialAgentSocketPath(source) &&
+          !isTaxOrAccountingDataPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2520,6 +2533,34 @@ function isCredentialAgentSocketPath(source) {
     /^\/run\/user\/\d+\/gnupg\/S\.gpg-agent(\..+)?$/.test(normalized) ||
     /^\/run\/user\/\d+\/keyring\/(control|pkcs11|secrets)$/.test(normalized) ||
     /^\/run\/user\/\d+\/bus$/.test(normalized)
+  );
+}
+
+function isTaxOrAccountingDataPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/gnucash',
+    '.local/share/gnucash',
+    '.local/share/GnuCash',
+    'Documents/TurboTax',
+    'Documents/TaxAct',
+    'Documents/H&R Block',
+    'Library/Application Support/GnuCash',
+    'Library/Application Support/Quicken',
+    'Library/Application Support/QuickBooks'
+  ];
+  const keyPattern = /(\.config\/gnucash|\.local\/share\/(gnucash|GnuCash)|Documents\/(TurboTax|TaxAct|H&R Block))(\/|$)/;
+  return (
+    /\.(tax\d{2}|tax20\d{2}|qdf|qbb|qbw|gnucash)$/i.test(path.basename(normalized)) ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(GnuCash|Quicken|QuickBooks)(\/|$)/.test(normalized)
   );
 }
 
