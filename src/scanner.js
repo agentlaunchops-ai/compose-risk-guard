@@ -70,7 +70,8 @@ export const rules = {
   CRG065: 'Service bind-mounts host OS keychain or keyring data',
   CRG066: 'Service bind-mounts host hardware authenticator or passkey state',
   CRG067: 'Service bind-mounts host browser automation session state',
-  CRG068: 'Service bind-mounts host private sync tool identity data'
+  CRG068: 'Service bind-mounts host private sync tool identity data',
+  CRG069: 'Service bind-mounts host remote access credentials'
 };
 
 const composeNames = new Set([
@@ -802,6 +803,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isRemoteAccessCredentialPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG069',
+          `${serviceName} bind-mounts host remote access credentials from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -918,6 +930,7 @@ function normalizeVolumes(value) {
           !isHardwareAuthenticatorOrPasskeyPath(source) &&
           !isBrowserAutomationStatePath(source) &&
           !isPrivateSyncIdentityPath(source) &&
+          !isRemoteAccessCredentialPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2204,6 +2217,39 @@ function isPrivateSyncIdentityPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Syncthing|Resilio Sync)(\/|$)/.test(normalized)
+  );
+}
+
+function isRemoteAccessCredentialPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.anydesk',
+    '.config/AnyDesk',
+    '.config/teamviewer',
+    '.config/rustdesk',
+    'Library/Application Support/AnyDesk',
+    'Library/Application Support/TeamViewer',
+    'Library/Application Support/RustDesk'
+  ];
+  const keyPattern = /(\.anydesk|\.config\/(AnyDesk|anydesk|teamviewer|rustdesk))(\/|$)/;
+  return (
+    normalized === '/etc/anydesk' ||
+    normalized.startsWith('/etc/anydesk/') ||
+    normalized === '/etc/teamviewer' ||
+    normalized.startsWith('/etc/teamviewer/') ||
+    normalized === '/var/lib/anydesk' ||
+    normalized.startsWith('/var/lib/anydesk/') ||
+    normalized === '/var/lib/teamviewer' ||
+    normalized.startsWith('/var/lib/teamviewer/') ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(AnyDesk|TeamViewer|RustDesk)(\/|$)/.test(normalized)
   );
 }
 

@@ -1700,6 +1700,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Resilio Sync')));
 });
 
+test('host remote access credential bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  anydesk:
+    image: node:20
+    volumes:
+      - \${HOME}/.anydesk:/host-anydesk:ro
+      - /tmp/cache:/cache
+  teamviewer:
+    image: node:20
+    volumes:
+      - /home/alice/.config/teamviewer:/host-teamviewer:ro
+  system:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /var/lib/anydesk
+        target: /host-anydesk-system
+  rustdesk:
+    image: node:20
+    volumes:
+      - ~/Library/Application Support/RustDesk:/host-rustdesk:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG069', 'CRG069', 'CRG069', 'CRG069']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.anydesk')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/teamviewer')));
+  assert(findings.some((finding) => finding.message.includes('/var/lib/anydesk')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/RustDesk')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

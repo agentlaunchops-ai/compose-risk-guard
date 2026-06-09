@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG069` to flag host remote access credentials bind-mounted into Compose
+  services.
 - Add `CRG068` to flag host private sync tool identity data bind-mounted into
   Compose services.
 - Add `CRG067` to flag host browser automation session state bind-mounted into
