@@ -71,7 +71,8 @@ export const rules = {
   CRG066: 'Service bind-mounts host hardware authenticator or passkey state',
   CRG067: 'Service bind-mounts host browser automation session state',
   CRG068: 'Service bind-mounts host private sync tool identity data',
-  CRG069: 'Service bind-mounts host remote access credentials'
+  CRG069: 'Service bind-mounts host remote access credentials',
+  CRG070: 'Service bind-mounts host language runtime package caches'
 };
 
 const composeNames = new Set([
@@ -814,6 +815,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isLanguageRuntimePackageCachePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG070',
+          `${serviceName} bind-mounts host language runtime package caches from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -931,6 +943,7 @@ function normalizeVolumes(value) {
           !isBrowserAutomationStatePath(source) &&
           !isPrivateSyncIdentityPath(source) &&
           !isRemoteAccessCredentialPath(source) &&
+          !isLanguageRuntimePackageCachePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2250,6 +2263,37 @@ function isRemoteAccessCredentialPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(AnyDesk|TeamViewer|RustDesk)(\/|$)/.test(normalized)
+  );
+}
+
+function isLanguageRuntimePackageCachePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.npm',
+    '.cache/pip',
+    '.cache/pypoetry',
+    '.cache/yarn',
+    '.cache/pnpm',
+    '.cargo/registry',
+    '.cargo/git',
+    '.local/share/pnpm',
+    'Library/Caches/pip',
+    'Library/Caches/pypoetry',
+    'Library/Caches/Yarn',
+    'Library/pnpm'
+  ];
+  const keyPattern = /(\.npm|\.cache\/(pip|pypoetry|yarn|pnpm)|\.cargo\/(registry|git)|\.local\/share\/pnpm)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Caches\/(pip|pypoetry|Yarn)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/pnpm(\/|$)/.test(normalized)
   );
 }
 

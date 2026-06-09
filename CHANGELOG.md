@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG070` to flag host language runtime package caches bind-mounted into
+  Compose services.
 - Add `CRG069` to flag host remote access credentials bind-mounted into Compose
   services.
 - Add `CRG068` to flag host private sync tool identity data bind-mounted into

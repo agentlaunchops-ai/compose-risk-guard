@@ -1738,6 +1738,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/RustDesk')));
 });
 
+test('host language runtime package cache bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  npm:
+    image: node:20
+    volumes:
+      - \${HOME}/.npm:/root/.npm:ro
+      - /tmp/cache:/cache
+  pip:
+    image: python:3.12
+    volumes:
+      - /home/alice/.cache/pip:/root/.cache/pip:ro
+  cargo:
+    image: rust:1.85
+    volumes:
+      - type: bind
+        source: /Users/alice/.cargo/registry
+        target: /usr/local/cargo/registry
+  yarn:
+    image: node:20
+    volumes:
+      - ~/Library/Caches/Yarn:/host-yarn-cache:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG070', 'CRG070', 'CRG070', 'CRG070']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.npm')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.cache/pip')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/.cargo/registry')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Caches/Yarn')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

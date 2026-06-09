@@ -71,6 +71,7 @@ It checks for:
 - host browser automation session state bind-mounted into services
 - host private sync tool identity data bind-mounted into services
 - host remote access credentials bind-mounted into services
+- host language runtime package caches bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -192,6 +193,7 @@ jobs:
 | `CRG067` | Service bind-mounts host browser automation session state |
 | `CRG068` | Service bind-mounts host private sync tool identity data |
 | `CRG069` | Service bind-mounts host remote access credentials |
+| `CRG070` | Service bind-mounts host language runtime package caches |
 
 ## License
 
