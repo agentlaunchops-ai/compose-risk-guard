@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG067` to flag host browser automation session state bind-mounted into
+  Compose services.
 - Add `CRG066` to flag host hardware authenticator or passkey state bind-mounted
   into Compose services.
 - Add `CRG065` to flag host OS keychain or keyring data bind-mounted into

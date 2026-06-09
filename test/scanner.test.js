@@ -1624,6 +1624,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Yubico')));
 });
 
+test('host browser automation session state bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.52.0
+    volumes:
+      - \${HOME}/.cache/ms-playwright:/root/.cache/ms-playwright:ro
+      - /tmp/cache:/cache
+  puppeteer:
+    image: node:20
+    volumes:
+      - /home/alice/.cache/puppeteer:/root/.cache/puppeteer:ro
+  cypress:
+    image: cypress/included:14.4.0
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Application Support/Cypress
+        target: /host-cypress
+  selenium:
+    image: selenium/standalone-chrome:4.33.0
+    volumes:
+      - ~/.config/selenium:/root/.config/selenium:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG067', 'CRG067', 'CRG067', 'CRG067']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.cache/ms-playwright')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.cache/puppeteer')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Application Support/Cypress')));
+  assert(findings.some((finding) => finding.message.includes('~/.config/selenium')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

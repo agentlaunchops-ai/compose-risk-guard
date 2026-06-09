@@ -68,7 +68,8 @@ export const rules = {
   CRG063: 'Service bind-mounts host terminal emulator state',
   CRG064: 'Service bind-mounts host notes or knowledge-base data',
   CRG065: 'Service bind-mounts host OS keychain or keyring data',
-  CRG066: 'Service bind-mounts host hardware authenticator or passkey state'
+  CRG066: 'Service bind-mounts host hardware authenticator or passkey state',
+  CRG067: 'Service bind-mounts host browser automation session state'
 };
 
 const composeNames = new Set([
@@ -778,6 +779,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isBrowserAutomationStatePath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG067',
+          `${serviceName} bind-mounts host browser automation session state from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -892,6 +904,7 @@ function normalizeVolumes(value) {
           !isNotesOrKnowledgeBasePath(source) &&
           !isOsKeychainPath(source) &&
           !isHardwareAuthenticatorOrPasskeyPath(source) &&
+          !isBrowserAutomationStatePath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2119,6 +2132,37 @@ function isHardwareAuthenticatorOrPasskeyPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Yubico|WebAuthn)(\/|$)/.test(normalized)
+  );
+}
+
+function isBrowserAutomationStatePath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.cache/ms-playwright',
+    '.cache/puppeteer',
+    '.cache/Cypress',
+    '.config/cypress',
+    '.config/selenium',
+    '.wdio',
+    '.webdriverio',
+    'Library/Caches/ms-playwright',
+    'Library/Caches/puppeteer',
+    'Library/Caches/Cypress',
+    'Library/Application Support/Cypress',
+    'Library/Application Support/selenium'
+  ];
+  const keyPattern = /(\.cache\/(ms-playwright|puppeteer|Cypress)|\.config\/(cypress|selenium)|\.wdio|\.webdriverio)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Caches\/(ms-playwright|puppeteer|Cypress)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Cypress|selenium)(\/|$)/.test(normalized)
   );
 }
 
