@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG065` to flag host OS keychain or keyring data bind-mounted into
+  Compose services.
 - Add `CRG064` to flag host notes or knowledge-base data bind-mounted into
   Compose services.
 - Add `CRG063` to flag host terminal emulator state bind-mounted into Compose

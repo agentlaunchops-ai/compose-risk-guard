@@ -1548,6 +1548,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Group Containers/group.com.apple.notes')));
 });
 
+test('host OS keychain and keyring bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  gnome:
+    image: node:20
+    volumes:
+      - \${HOME}/.local/share/keyrings:/host-keyrings:ro
+      - /tmp/cache:/cache
+  legacy:
+    image: node:20
+    volumes:
+      - /home/alice/.gnome2/keyrings:/host-gnome-keyrings:ro
+  kwallet:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /root/.config/kwalletd
+        target: /host-kwallet
+  macos:
+    image: node:20
+    volumes:
+      - ~/Library/Keychains/login.keychain-db:/host-login.keychain-db:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG065', 'CRG065', 'CRG065', 'CRG065']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.local/share/keyrings')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.gnome2/keyrings')));
+  assert(findings.some((finding) => finding.message.includes('/root/.config/kwalletd')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Keychains/login.keychain-db')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
