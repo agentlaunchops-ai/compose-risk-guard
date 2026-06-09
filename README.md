@@ -67,6 +67,7 @@ It checks for:
 - host notes or knowledge-base data bind-mounted into services
 - host terminal emulator state bind-mounted into services
 - host OS keychain or keyring data bind-mounted into services
+- host hardware authenticator or passkey state bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -184,6 +185,7 @@ jobs:
 | `CRG063` | Service bind-mounts host terminal emulator state |
 | `CRG064` | Service bind-mounts host notes or knowledge-base data |
 | `CRG065` | Service bind-mounts host OS keychain or keyring data |
+| `CRG066` | Service bind-mounts host hardware authenticator or passkey state |
 
 ## License
 

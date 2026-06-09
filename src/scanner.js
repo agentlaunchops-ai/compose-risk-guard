@@ -67,7 +67,8 @@ export const rules = {
   CRG062: 'Service bind-mounts host editor or IDE state',
   CRG063: 'Service bind-mounts host terminal emulator state',
   CRG064: 'Service bind-mounts host notes or knowledge-base data',
-  CRG065: 'Service bind-mounts host OS keychain or keyring data'
+  CRG065: 'Service bind-mounts host OS keychain or keyring data',
+  CRG066: 'Service bind-mounts host hardware authenticator or passkey state'
 };
 
 const composeNames = new Set([
@@ -766,6 +767,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isHardwareAuthenticatorOrPasskeyPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG066',
+          `${serviceName} bind-mounts host hardware authenticator or passkey state from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -879,6 +891,7 @@ function normalizeVolumes(value) {
           !isTerminalEmulatorStatePath(source) &&
           !isNotesOrKnowledgeBasePath(source) &&
           !isOsKeychainPath(source) &&
+          !isHardwareAuthenticatorOrPasskeyPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2081,6 +2094,31 @@ function isOsKeychainPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Keychains(\/|$)/.test(normalized)
+  );
+}
+
+function isHardwareAuthenticatorOrPasskeyPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/Yubico',
+    '.config/yubico',
+    '.yubico',
+    '.config/libfido2',
+    '.local/share/webauthn',
+    'Library/Application Support/Yubico',
+    'Library/Application Support/WebAuthn'
+  ];
+  const keyPattern = /(\.config\/(Yubico|yubico|libfido2)|\.yubico|\.local\/share\/webauthn)(\/|$)/;
+  return (
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Yubico|WebAuthn)(\/|$)/.test(normalized)
   );
 }
 

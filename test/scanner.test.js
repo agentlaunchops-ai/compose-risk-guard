@@ -1586,6 +1586,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Keychains/login.keychain-db')));
 });
 
+test('host hardware authenticator and passkey state bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  yubikey:
+    image: node:20
+    volumes:
+      - \${HOME}/.config/Yubico:/host-yubico:ro
+      - /tmp/cache:/cache
+  fido:
+    image: node:20
+    volumes:
+      - /home/alice/.config/libfido2:/host-fido:ro
+  webauthn:
+    image: node:20
+    volumes:
+      - type: bind
+        source: /root/.local/share/webauthn
+        target: /host-webauthn
+  macos:
+    image: node:20
+    volumes:
+      - ~/Library/Application Support/Yubico:/host-macos-yubico:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG066', 'CRG066', 'CRG066', 'CRG066']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/Yubico')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.config/libfido2')));
+  assert(findings.some((finding) => finding.message.includes('/root/.local/share/webauthn')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Yubico')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
