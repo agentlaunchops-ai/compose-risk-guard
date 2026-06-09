@@ -2419,6 +2419,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('${HOME}/.config/digikamrc')));
 });
 
+test('host music or media library data bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  apple:
+    image: alpine:3.22
+    volumes:
+      - ~/Music/Music Library.musiclibrary:/music:ro
+      - /tmp/cache:/cache
+  itunes:
+    image: alpine:3.22
+    volumes:
+      - /Users/alice/Music/iTunes/iTunes Library.itl:/itunes.itl:ro
+  rhythmbox:
+    image: alpine:3.22
+    volumes:
+      - type: bind
+        source: /home/alice/.local/share/rhythmbox
+        target: /rhythmbox
+  plexamp:
+    image: alpine:3.22
+    volumes:
+      - \${HOME}/Library/Application Support/Plexamp:/plexamp:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG079', 'CRG079', 'CRG079', 'CRG079']
+  );
+  assert(findings.some((finding) => finding.message.includes('~/Music/Music Library.musiclibrary')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Music/iTunes/iTunes Library.itl')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.local/share/rhythmbox')));
+  assert(findings.some((finding) => finding.message.includes('${HOME}/Library/Application Support/Plexamp')));
+});
+
 test('literal secret label values are reported', () => {
   const dir = fixture({
     'compose.yml': `

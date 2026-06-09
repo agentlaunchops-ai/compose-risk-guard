@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG079` to flag host music or media library data bind-mounted into
+  Compose services.
 - Add `CRG078` to flag host photo library data bind-mounted into Compose
   services.
 - Add `CRG077` to flag host tax or accounting app data bind-mounted into Compose

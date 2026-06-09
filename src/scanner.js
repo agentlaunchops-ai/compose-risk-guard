@@ -80,7 +80,8 @@ export const rules = {
   CRG075: 'Service bind-mounts host messaging app data',
   CRG076: 'Service bind-mounts a host credential agent socket',
   CRG077: 'Service bind-mounts host tax or accounting app data',
-  CRG078: 'Service bind-mounts host photo library data'
+  CRG078: 'Service bind-mounts host photo library data',
+  CRG079: 'Service bind-mounts host music or media library data'
 };
 
 const composeNames = new Set([
@@ -922,6 +923,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isMusicOrMediaLibraryPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG079',
+          `${serviceName} bind-mounts host music or media library data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -1048,6 +1060,7 @@ function normalizeVolumes(value) {
           !isCredentialAgentSocketPath(source) &&
           !isTaxOrAccountingDataPath(source) &&
           !isPhotoLibraryDataPath(source) &&
+          !isMusicOrMediaLibraryPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2599,6 +2612,36 @@ function isPhotoLibraryDataPath(source) {
     new RegExp(`^/root/${linuxPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/Pictures/(Photos Library\\.photoslibrary|iPhoto Library\\.photolibrary|Lightroom)(/|$)`).test(normalized) ||
     /^\/Users\/[^/]+\/Pictures\/[^/]+\.lrcat$/i.test(normalized)
+  );
+}
+
+function isMusicOrMediaLibraryPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    'Music/Music Library.musiclibrary',
+    'Music/iTunes',
+    'Music/iTunes/iTunes Library.itl',
+    'Music/Media.localized',
+    '.config/rhythmbox',
+    '.config/Clementine',
+    '.local/share/rhythmbox',
+    '.local/share/clementine',
+    'Library/Application Support/MediaMonkey',
+    'Library/Application Support/Plexamp'
+  ];
+  const linuxPattern = /(\.config\/(rhythmbox|Clementine|clementine)|\.local\/share\/(rhythmbox|clementine))(\/|$)/;
+  return (
+    /\.(musiclibrary|itl)$/i.test(path.basename(normalized)) ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${linuxPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${linuxPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${linuxPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Music\/(Music Library\.musiclibrary|iTunes|Media\.localized)(\/|$)/.test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(MediaMonkey|Plexamp)(\/|$)/.test(normalized)
   );
 }
 
