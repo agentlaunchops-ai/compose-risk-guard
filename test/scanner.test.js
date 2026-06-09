@@ -1662,6 +1662,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/.config/selenium')));
 });
 
+test('host private sync identity bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  syncthing:
+    image: syncthing/syncthing:1.29
+    volumes:
+      - \${HOME}/.config/syncthing:/host-syncthing:ro
+      - /tmp/cache:/cache
+  linux-state:
+    image: alpine:3.22
+    volumes:
+      - /home/alice/.local/state/syncthing:/host-state:ro
+  resilio:
+    image: resilio/sync:3.1
+    volumes:
+      - type: bind
+        source: /var/lib/resilio-sync
+        target: /host-resilio
+  macos:
+    image: alpine:3.22
+    volumes:
+      - ~/Library/Application Support/Resilio Sync:/host-macos-resilio:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG068', 'CRG068', 'CRG068', 'CRG068']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/syncthing')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.local/state/syncthing')));
+  assert(findings.some((finding) => finding.message.includes('/var/lib/resilio-sync')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Resilio Sync')));
+});
+
 test('host Git and SSH credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `

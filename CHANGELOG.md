@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG068` to flag host private sync tool identity data bind-mounted into
+  Compose services.
 - Add `CRG067` to flag host browser automation session state bind-mounted into
   Compose services.
 - Add `CRG066` to flag host hardware authenticator or passkey state bind-mounted

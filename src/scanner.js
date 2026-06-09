@@ -69,7 +69,8 @@ export const rules = {
   CRG064: 'Service bind-mounts host notes or knowledge-base data',
   CRG065: 'Service bind-mounts host OS keychain or keyring data',
   CRG066: 'Service bind-mounts host hardware authenticator or passkey state',
-  CRG067: 'Service bind-mounts host browser automation session state'
+  CRG067: 'Service bind-mounts host browser automation session state',
+  CRG068: 'Service bind-mounts host private sync tool identity data'
 };
 
 const composeNames = new Set([
@@ -790,6 +791,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isPrivateSyncIdentityPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG068',
+          `${serviceName} bind-mounts host private sync tool identity data from ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -905,6 +917,7 @@ function normalizeVolumes(value) {
           !isOsKeychainPath(source) &&
           !isHardwareAuthenticatorOrPasskeyPath(source) &&
           !isBrowserAutomationStatePath(source) &&
+          !isPrivateSyncIdentityPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2163,6 +2176,34 @@ function isBrowserAutomationStatePath(source) {
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Caches\/(ms-playwright|puppeteer|Cypress)(\/|$)/.test(normalized) ||
     /^\/Users\/[^/]+\/Library\/Application Support\/(Cypress|selenium)(\/|$)/.test(normalized)
+  );
+}
+
+function isPrivateSyncIdentityPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const homePrefixes = ['~', '$HOME', '${HOME}'];
+  const homePaths = [
+    '.config/syncthing',
+    '.local/state/syncthing',
+    '.config/resilio-sync',
+    '.config/Sync',
+    'Library/Application Support/Syncthing',
+    'Library/Application Support/Resilio Sync'
+  ];
+  const keyPattern = /(\.config\/(syncthing|resilio-sync|Sync)|\.local\/state\/syncthing)(\/|$)/;
+  return (
+    normalized === '/var/lib/syncthing' ||
+    normalized.startsWith('/var/lib/syncthing/') ||
+    normalized === '/var/lib/resilio-sync' ||
+    normalized.startsWith('/var/lib/resilio-sync/') ||
+    homePrefixes.some((home) =>
+      homePaths.some((item) => normalized === `${home}/${item}` || normalized.startsWith(`${home}/${item}/`))
+    ) ||
+    new RegExp(`^/home/[^/]+/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
+    new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
+    /^\/Users\/[^/]+\/Library\/Application Support\/(Syncthing|Resilio Sync)(\/|$)/.test(normalized)
   );
 }
 

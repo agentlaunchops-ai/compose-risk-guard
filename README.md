@@ -69,6 +69,7 @@ It checks for:
 - host OS keychain or keyring data bind-mounted into services
 - host hardware authenticator or passkey state bind-mounted into services
 - host browser automation session state bind-mounted into services
+- host private sync tool identity data bind-mounted into services
 - host Git or SSH credential files bind-mounted into services
 - services joining another container's network, PID, or IPC namespace
 
@@ -188,6 +189,7 @@ jobs:
 | `CRG065` | Service bind-mounts host OS keychain or keyring data |
 | `CRG066` | Service bind-mounts host hardware authenticator or passkey state |
 | `CRG067` | Service bind-mounts host browser automation session state |
+| `CRG068` | Service bind-mounts host private sync tool identity data |
 
 ## License
 
