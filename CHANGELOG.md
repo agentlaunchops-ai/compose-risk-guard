@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `CRG076` to flag host credential agent sockets bind-mounted into Compose
+  services.
 - Add `CRG075` to flag host messaging app data bind-mounted into Compose
   services.
 - Add `CRG074` to flag host calendar or contact data bind-mounted into Compose

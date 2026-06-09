@@ -77,7 +77,8 @@ export const rules = {
   CRG072: 'Service bind-mounts host VPN client profiles or state',
   CRG073: 'Service bind-mounts host artifact signing credentials',
   CRG074: 'Service bind-mounts host calendar or contact data',
-  CRG075: 'Service bind-mounts host messaging app data'
+  CRG075: 'Service bind-mounts host messaging app data',
+  CRG076: 'Service bind-mounts a host credential agent socket'
 };
 
 const composeNames = new Set([
@@ -886,6 +887,17 @@ function scanHostAccess(service, serviceName, filePath, text) {
       );
       continue;
     }
+    if (isCredentialAgentSocketPath(mount.source)) {
+      findings.push(
+        finding(
+          'CRG076',
+          `${serviceName} bind-mounts host credential agent socket ${mount.source}`,
+          filePath,
+          lineFor(text, mount.source)
+        )
+      );
+      continue;
+    }
     if (isGitOrSshCredentialPath(mount.source)) {
       findings.push(
         finding(
@@ -1009,6 +1021,7 @@ function normalizeVolumes(value) {
           !isArtifactSigningCredentialPath(source) &&
           !isCalendarOrContactDataPath(source) &&
           !isMessagingAppDataPath(source) &&
+          !isCredentialAgentSocketPath(source) &&
           !isGitOrSshCredentialPath(source))
       ) {
         return [];
@@ -2493,6 +2506,20 @@ function isMessagingAppDataPath(source) {
     new RegExp(`^/root/${keyPattern.source}`).test(normalized) ||
     new RegExp(`^/Users/[^/]+/${keyPattern.source}`).test(normalized) ||
     /^\/Users\/[^/]+\/Library\/(Messages|Application Support\/(Signal|Telegram Desktop))(\/|$)/.test(normalized)
+  );
+}
+
+function isCredentialAgentSocketPath(source) {
+  const normalized = String(source || '').trim();
+  if (!normalized) return false;
+  const basename = path.basename(normalized);
+  return (
+    /^S\.gpg-agent(\..+)?$/.test(basename) ||
+    /^gpg-agent(\..+)?\.sock$/.test(basename) ||
+    basename === 'pinentry' ||
+    /^\/run\/user\/\d+\/gnupg\/S\.gpg-agent(\..+)?$/.test(normalized) ||
+    /^\/run\/user\/\d+\/keyring\/(control|pkcs11|secrets)$/.test(normalized) ||
+    /^\/run\/user\/\d+\/bus$/.test(normalized)
   );
 }
 

@@ -300,6 +300,39 @@ services:
   assert(findings.some((finding) => finding.message.includes('/run/host-services/ssh-auth.sock')));
 });
 
+test('host credential agent socket bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  signer:
+    image: signer:1.0.0
+    volumes:
+      - /run/user/1000/gnupg/S.gpg-agent:/run/gnupg/S.gpg-agent
+      - /tmp/cache:/cache
+  desktop:
+    image: desktop:1.0.0
+    volumes:
+      - type: bind
+        source: /run/user/1000/keyring/secrets
+        target: /run/keyring/secrets
+  dbus:
+    image: dbus:1.0.0
+    volumes:
+      - /run/user/1000/bus:/run/user/1000/bus
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 3);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG076', 'CRG076', 'CRG076']
+  );
+  assert(findings.some((finding) => finding.message.includes('/run/user/1000/gnupg/S.gpg-agent')));
+  assert(findings.some((finding) => finding.message.includes('/run/user/1000/keyring/secrets')));
+  assert(findings.some((finding) => finding.message.includes('/run/user/1000/bus')));
+});
+
 test('host Docker client credential bind mounts are reported', () => {
   const dir = fixture({
     'compose.yml': `
