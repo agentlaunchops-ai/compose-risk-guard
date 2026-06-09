@@ -2275,6 +2275,44 @@ services:
   assert(findings.some((finding) => finding.message.includes('~/Library/Calendars')));
 });
 
+test('host messaging app data bind mounts are reported', () => {
+  const dir = fixture({
+    'compose.yml': `
+services:
+  signal:
+    image: alpine:3.22
+    volumes:
+      - \${HOME}/.config/Signal:/root/.config/Signal:ro
+      - /tmp/cache:/cache
+  telegram:
+    image: alpine:3.22
+    volumes:
+      - /home/alice/.local/share/TelegramDesktop/tdata:/telegram/tdata:ro
+  imessage:
+    image: alpine:3.22
+    volumes:
+      - type: bind
+        source: /Users/alice/Library/Messages
+        target: /messages
+  macsignal:
+    image: alpine:3.22
+    volumes:
+      - ~/Library/Application Support/Signal:/signal:ro
+`
+  });
+
+  const findings = scanProject(dir);
+  assert.equal(findings.length, 4);
+  assert.deepEqual(
+    findings.map((finding) => finding.ruleId),
+    ['CRG075', 'CRG075', 'CRG075', 'CRG075']
+  );
+  assert(findings.some((finding) => finding.message.includes('${HOME}/.config/Signal')));
+  assert(findings.some((finding) => finding.message.includes('/home/alice/.local/share/TelegramDesktop/tdata')));
+  assert(findings.some((finding) => finding.message.includes('/Users/alice/Library/Messages')));
+  assert(findings.some((finding) => finding.message.includes('~/Library/Application Support/Signal')));
+});
+
 test('literal secret label values are reported', () => {
   const dir = fixture({
     'compose.yml': `
