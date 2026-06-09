@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add `CRG075` to flag host messaging app data bind-mounted into Compose
+  services.
+- Add `CRG074` to flag host calendar or contact data bind-mounted into Compose
+  services.
 - Add `CRG073` to flag host artifact signing credentials bind-mounted into
   Compose services.
 - Add `CRG072` to flag host VPN client profiles or state bind-mounted into
