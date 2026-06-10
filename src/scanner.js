@@ -2691,6 +2691,34 @@ export function formatText(findings, rootDir = process.cwd()) {
     .join('\n');
 }
 
+export function formatGitHubAnnotations(findings, rootDir = process.cwd()) {
+  if (findings.length === 0) return 'compose-risk-guard: no findings';
+  return findings
+    .map((item) => {
+      const rel = path.relative(rootDir, item.filePath) || item.filePath;
+      const level = item.severity === 'warning' ? 'warning' : 'error';
+      const title = `${item.ruleId} ${rules[item.ruleId] || 'Compose risk'}`;
+      return `::${level} file=${escapeGitHubAnnotationProperty(rel)},line=${item.line},title=${escapeGitHubAnnotationProperty(title)}::${escapeGitHubAnnotationMessage(item.message)}`;
+    })
+    .join('\n');
+}
+
+function escapeGitHubAnnotationProperty(value) {
+  return String(value)
+    .replace(/%/g, '%25')
+    .replace(/\r/g, '%0D')
+    .replace(/\n/g, '%0A')
+    .replace(/:/g, '%3A')
+    .replace(/,/g, '%2C');
+}
+
+function escapeGitHubAnnotationMessage(value) {
+  return String(value)
+    .replace(/%/g, '%25')
+    .replace(/\r/g, '%0D')
+    .replace(/\n/g, '%0A');
+}
+
 export function toSarif(findings, rootDir = process.cwd()) {
   const usedRules = new Set(findings.map((item) => item.ruleId));
   return {

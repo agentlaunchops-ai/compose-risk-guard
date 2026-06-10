@@ -96,6 +96,7 @@ npm install -g @agentlaunchopsai/compose-risk-guard
 compose-risk-guard .
 compose-risk-guard . --json
 compose-risk-guard . --sarif
+compose-risk-guard . --github
 compose-risk-guard . --no-fail
 npx @agentlaunchopsai/compose-risk-guard .
 ```
@@ -119,6 +120,16 @@ jobs:
       contents: read
       security-events: write
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npx -y @agentlaunchopsai/compose-risk-guard . --github
+```
+
+To upload the same findings to GitHub code scanning, emit SARIF instead:
+
+```yaml
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:

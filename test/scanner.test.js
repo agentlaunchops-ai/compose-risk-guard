@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { formatText, scanProject, toSarif } from '../src/scanner.js';
+import { formatGitHubAnnotations, formatText, scanProject, toSarif } from '../src/scanner.js';
 
 const cli = path.resolve('src/cli.js');
 
@@ -2636,6 +2636,25 @@ services:
   assert.equal(sarif.runs[0].results[0].ruleId, 'CRG007');
 });
 
+test('github annotation output escapes workflow command syntax', () => {
+  const dir = fixture({ 'compose.yml': 'services: {}\n' });
+  const output = formatGitHubAnnotations(
+    [
+      {
+        ruleId: 'CRG001',
+        message: 'app has alpha%beta\non API_TOKEN',
+        filePath: path.join(dir, 'compose:ci.yml'),
+        line: 5,
+        severity: 'error'
+      }
+    ],
+    dir
+  );
+
+  assert.match(output, /::error file=compose%3Aci\.yml,line=5,title=CRG001/);
+  assert.match(output, /alpha%25beta%0Aon API_TOKEN/);
+});
+
 test('cli exits 0 when clean and 1 when findings exist', () => {
   const clean = fixture({ 'compose.yml': 'services:\n  app:\n    image: app:1.0.0\n' });
   const risky = fixture({ 'compose.yml': 'services:\n  app:\n    image: app\n' });
@@ -2659,6 +2678,14 @@ test('cli can emit json and sarif', () => {
 
   assert.equal(JSON.parse(json.stdout)[0].ruleId, 'CRG007');
   assert.equal(JSON.parse(sarif.stdout).version, '2.1.0');
+});
+
+test('cli can emit github annotations', () => {
+  const dir = fixture({ 'compose.yml': 'services:\n  app:\n    image: app\n' });
+  const result = spawnSync(process.execPath, [cli, dir, '--github'], { encoding: 'utf8' });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /::warning file=compose\.yml,line=3,title=CRG007/);
 });
 
 function fixture(files) {
