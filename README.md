@@ -224,6 +224,15 @@ To upload the same findings to GitHub code scanning, emit SARIF instead:
 | `CRG078` | Service bind-mounts host photo library data |
 | `CRG079` | Service bind-mounts host music or media library data |
 
+## Related security tooling
+
+If you also use GitHub Actions, [`gha-guard`](https://www.npmjs.com/package/@agentlaunchopsai/gha-guard)
+(`npx @agentlaunchopsai/gha-guard`) applies the same idea to your CI: it flags unpinned action
+SHAs, over-broad `GITHUB_TOKEN` permissions, and script injection. Free, same author.
+
+For a deeper, maintained rule set plus remediation playbooks, see the optional
+[GHA Guard Pro Kit](https://launchagent.gumroad.com/l/auqpvm?utm_source=compose-risk-guard&utm_medium=readme&utm_campaign=pro) ($29).
+
 ## License
 
 MIT
